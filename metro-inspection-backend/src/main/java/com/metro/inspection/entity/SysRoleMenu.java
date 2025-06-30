@@ -1,7 +1,6 @@
 package com.metro.inspection.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import java.io.Serializable;
 
 @TableName("sys_role_menu")
 public class SysRoleMenu {

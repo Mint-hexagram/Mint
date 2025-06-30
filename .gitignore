@@ -26,3 +26,7 @@ Thumbs.db
 # SSL & secrets
 ssl/
 .env 
+
+
+* text=auto
+*.js *.java *.vue text eol=lf

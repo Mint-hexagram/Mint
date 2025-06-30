@@ -71,14 +71,13 @@ public class SysUserController {
 
     @PostMapping("/{id}/reset-password")
     public ApiResponse<Void> resetPassword(@PathVariable Long id) {
-        // TODO: 实现重置密码逻辑
+        // TODO: 实现重置密码逻辑（未实现，待开发）
         return ApiResponse.success(null);
     }
 
     @PostMapping("/{id}/roles")
     public ApiResponse<Void> assignRoles(@PathVariable Long id, @RequestBody Map<String, List<Long>> body) {
-        List<Long> roleIds = body.get("roleIds");
-        // TODO: 实现角色分配逻辑
+        // TODO: 实现角色分配逻辑（未实现，待开发）
         return ApiResponse.success(null);
     }
 } 

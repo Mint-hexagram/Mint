@@ -12,6 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.lang.NonNull;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -28,7 +29,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private StringRedisTemplate redisTemplate;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
             throws ServletException, IOException {
         
         try {
@@ -39,7 +40,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String username = redisTemplate.opsForValue().get("token:" + token);
                 if (username != null) {
                     // 从令牌中获取用户信息
-                    Long userId = jwtUtils.getUserIdFromToken(token);
                     String roles = jwtUtils.getRolesFromToken(token);
                     
                     // 创建认证对象

@@ -7,7 +7,6 @@ import com.metro.inspection.entity.DefectInfo;
 import com.metro.inspection.service.DefectInfoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import jakarta.validation.Valid;
 
 import java.util.List;
 

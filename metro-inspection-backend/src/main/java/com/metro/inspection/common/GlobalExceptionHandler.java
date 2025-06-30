@@ -8,7 +8,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ApiResponse<Void> handleValidationException(MethodArgumentNotValidException ex) {
-        String msg = ex.getBindingResult().getFieldError() != null ? ex.getBindingResult().getFieldError().getDefaultMessage() : "参数校验失败";
+        var fieldError = ex.getBindingResult().getFieldError();
+        String msg = fieldError != null ? fieldError.getDefaultMessage() : "参数校验失败";
         return ApiResponse.error(msg);
     }
 

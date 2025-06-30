@@ -172,24 +172,30 @@ onMounted(() => {
   height: calc(100% - 100px);
   gap: 20px;
   padding: 20px;
+  overflow: hidden;
 }
 .left-panel, .right-panel {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  align-items: stretch;
 }
 .center-panel {
-  flex: 1.5;
+  flex: 2;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  align-items: stretch;
+  justify-content: center;
+  min-width: 400px;
 }
 .card {
   border: 1px solid #00d4ff;
   background: rgba(0, 212, 255, 0.05);
   padding: 15px;
-  flex: 1;
+  margin-bottom: 0;
+  box-sizing: border-box;
 }
 .card-title {
   font-size: 16px;
@@ -219,20 +225,25 @@ onMounted(() => {
   margin-top: 5px;
   color: #ccc;
 }
-.chart-area {
+.card .chart-area {
+  flex: 1 1 auto;
+  min-height: 120px;
+  max-height: 260px;
   border: 1px solid rgba(0, 212, 255, 0.3);
-  height: 150px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(0, 212, 255, 0.02);
   color: #666;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 .center-stats {
   border: 1px solid #00d4ff;
   background: rgba(0, 212, 255, 0.1);
   padding: 20px;
   text-align: center;
+  margin-bottom: 0;
 }
 .center-stats-row {
   display: flex;
@@ -253,15 +264,18 @@ onMounted(() => {
   margin-top: 5px;
 }
 .earth-section {
-  flex: 2;
+  flex: none;
   border: 1px solid #00d4ff;
   background: rgba(0, 212, 255, 0.02);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 20px;
   color: #666;
   position: relative;
+  height: 380px;
+  margin-bottom: 0;
+  box-shadow: 0 0 24px 0 rgba(0,212,255,0.08);
 }
 .map-layers {
   position: absolute;
@@ -269,5 +283,13 @@ onMounted(() => {
   left: 20px;
   font-size: 12px;
   color: #999;
+}
+.left-panel .card, .right-panel .card {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+}
+.left-panel, .right-panel {
+  height: 100%;
 }
 </style> 
