@@ -21,14 +21,15 @@ public class TaskInfoController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String taskNo,
             @RequestParam(required = false) String taskName,
-            @RequestParam(required = false) String startPoint,
+            @RequestParam(required = false) String taskType,
+            @RequestParam(required = false) String priority,
             @RequestParam(required = false) Integer status,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
         
         Page<TaskInfo> page = new Page<>(current, size);
         IPage<TaskInfo> taskPage = taskInfoService.findByConditions(
-            taskNo, taskName, startPoint, status, startDate, endDate, page);
+            taskNo, taskName, taskType, priority, status, startDate, endDate, page);
         
         return ApiResponse.success(taskPage);
     }

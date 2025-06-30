@@ -32,6 +32,9 @@ public class SysMenu {
     @TableField("sort")
     private Integer sort;
 
+    @TableField("is_show")
+    private Integer isShow;
+
     @TableField("status")
     private Integer status;
 
@@ -61,6 +64,8 @@ public class SysMenu {
     public void setPermission(String permission) { this.permission = permission; }
     public Integer getSort() { return sort; }
     public void setSort(Integer sort) { this.sort = sort; }
+    public Integer getIsShow() { return isShow; }
+    public void setIsShow(Integer isShow) { this.isShow = isShow; }
     public Integer getStatus() { return status; }
     public void setStatus(Integer status) { this.status = status; }
     public LocalDateTime getCreateTime() { return createTime; }

@@ -9,7 +9,8 @@ public interface TaskInfoService extends IService<TaskInfo> {
     IPage<TaskInfo> findByConditions(
         String taskNo, 
         String taskName, 
-        String startPoint, 
+        String taskType,
+        String priority,
         Integer status, 
         String startDate, 
         String endDate, 

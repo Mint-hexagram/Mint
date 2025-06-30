@@ -30,14 +30,29 @@
               @keyup.enter="handleSearch"
             />
           </el-form-item>
-          <el-form-item label="起始地点" prop="startPoint">
-            <el-input 
-              v-model="searchForm.startPoint" 
-              placeholder="请输入起始地点" 
+          <el-form-item label="任务类型" prop="taskType">
+            <el-select 
+              v-model="searchForm.taskType" 
+              placeholder="请选择类型" 
               clearable 
               style="width: 150px"
-              @keyup.enter="handleSearch"
-            />
+            >
+              <el-option label="常规巡检" value="常规巡检" />
+              <el-option label="专项检查" value="专项检查" />
+              <el-option label="复检" value="复检" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="优先级" prop="priority">
+            <el-select 
+              v-model="searchForm.priority" 
+              placeholder="请选择优先级" 
+              clearable 
+              style="width: 150px"
+            >
+              <el-option label="高" value="高" />
+              <el-option label="中" value="中" />
+              <el-option label="低" value="低" />
+            </el-select>
           </el-form-item>
           <el-form-item label="任务状态" prop="status">
             <el-select 
@@ -142,12 +157,14 @@
         >
           <el-table-column type="selection" width="55" />
           <el-table-column type="index" label="序号" width="60" />
-          <el-table-column prop="taskNo" label="任务编号" width="120" />
-          <el-table-column prop="taskName" label="任务名称" min-width="150" />
-          <el-table-column prop="startPoint" label="起始地点" width="120" />
-          <el-table-column prop="distance" label="任务距离(km)" width="100">
+          <el-table-column prop="taskNo" label="任务编号" sortable width="180" />
+          <el-table-column prop="taskName" label="任务名称" sortable min-width="200" />
+          <el-table-column prop="taskType" label="任务类型" width="120" />
+          <el-table-column prop="priority" label="优先级" width="100">
             <template #default="{ row }">
-              {{ row.distance ? row.distance.toFixed(2) : '-' }}
+              <el-tag :type="getPriorityType(row.priority)">
+                {{ row.priority }}
+              </el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="status" label="状态" width="100">
@@ -157,22 +174,13 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="lastExecuteTime" label="最后执行时间" width="160">
+          <el-table-column prop="planStartTime" label="计划开始时间" sortable width="180">
             <template #default="{ row }">
-              {{ formatDateTime(row.lastExecuteTime) }}
+              {{ formatDateTime(row.planStartTime) }}
             </template>
           </el-table-column>
-          <el-table-column prop="finishTime" label="完成时间" width="160">
-            <template #default="{ row }">
-              {{ formatDateTime(row.finishTime) }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="uploadTime" label="上传时间" width="160">
-            <template #default="{ row }">
-              {{ formatDateTime(row.uploadTime) }}
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="200" align="center">
+          <el-table-column prop="executorName" label="执行人" width="120" />
+          <el-table-column label="操作" width="220" align="center" fixed="right">
             <template #default="{ row }">
               <el-button type="text" @click="handleView(row)">查看</el-button>
               <el-button type="text" @click="handleEdit(row)">编辑</el-button>
@@ -184,8 +192,8 @@
         <!-- 分页组件 -->
         <div class="pagination-container">
           <el-pagination
-            v-model:current-page="pagination.page"
-            v-model:page-size="pagination.size"
+            :current-page="pagination.page"
+            :page-size="pagination.size"
             :page-sizes="[10, 20, 50, 100]"
             :total="pagination.total"
             layout="total, sizes, prev, pager, next, jumper"
@@ -243,13 +251,15 @@
       <el-descriptions :column="2" border>
         <el-descriptions-item label="任务编号">{{ detailTask.taskNo }}</el-descriptions-item>
         <el-descriptions-item label="任务名称">{{ detailTask.taskName }}</el-descriptions-item>
-        <el-descriptions-item label="起始地点">{{ detailTask.startPoint }}</el-descriptions-item>
-        <el-descriptions-item label="任务距离">{{ detailTask.distance }} km</el-descriptions-item>
+        <el-descriptions-item label="任务类型">{{ detailTask.taskType }}</el-descriptions-item>
+        <el-descriptions-item label="优先级">{{ detailTask.priority }}</el-descriptions-item>
         <el-descriptions-item label="任务状态">
           <el-tag :type="getStatusType(detailTask.status)">
             {{ getStatusText(detailTask.status) }}
           </el-tag>
         </el-descriptions-item>
+        <el-descriptions-item label="计划开始时间">{{ formatDateTime(detailTask.planStartTime) }}</el-descriptions-item>
+        <el-descriptions-item label="执行人">{{ detailTask.executorName }}</el-descriptions-item>
         <el-descriptions-item label="创建人ID">{{ detailTask.creatorId }}</el-descriptions-item>
         <el-descriptions-item label="执行人ID">{{ detailTask.executorId }}</el-descriptions-item>
         <el-descriptions-item label="最后执行时间">{{ formatDateTime(detailTask.lastExecuteTime) }}</el-descriptions-item>
@@ -257,14 +267,84 @@
         <el-descriptions-item label="上传时间">{{ formatDateTime(detailTask.uploadTime) }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
+
+    <!-- 新增/编辑任务弹窗 -->
+    <el-dialog
+      v-model="dialogVisible"
+      :title="dialogTitle"
+      width="600px"
+      :before-close="handleClose"
+    >
+      <el-form 
+        :model="taskForm" 
+        :rules="taskRules" 
+        ref="taskFormRef" 
+        label-width="120px"
+      >
+        <el-form-item label="任务名称" prop="taskName">
+          <el-input v-model="taskForm.taskName" placeholder="请输入任务名称" />
+        </el-form-item>
+        <el-form-item label="任务类型" prop="taskType">
+          <el-select v-model="taskForm.taskType" placeholder="请选择任务类型">
+            <el-option label="常规巡检" value="常规巡检" />
+            <el-option label="专项检查" value="专项检查" />
+            <el-option label="复检" value="复检" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="优先级" prop="priority">
+          <el-radio-group v-model="taskForm.priority">
+            <el-radio-button label="高" />
+            <el-radio-button label="中" />
+            <el-radio-button label="低" />
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="计划时间" prop="planTime">
+           <el-date-picker
+              v-model="taskForm.planTime"
+              type="datetimerange"
+              range-separator="至"
+              start-placeholder="计划开始时间"
+              end-placeholder="计划完成时间"
+              value-format="YYYY-MM-DD HH:mm:ss"
+            />
+        </el-form-item>
+        <el-form-item label="执行人" prop="executorId">
+          <el-select v-model="taskForm.executorId" placeholder="请选择执行人" filterable>
+            <!-- 假设 userList 是从后端获取的用户列表 -->
+            <el-option 
+              v-for="user in userList" 
+              :key="user.id" 
+              :label="user.realName" 
+              :value="user.id" 
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="任务描述" prop="description">
+          <el-input 
+            type="textarea"
+            :rows="3"
+            v-model="taskForm.description" 
+            placeholder="请输入任务描述" 
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="handleClose">取 消</el-button>
+        <el-button type="primary" @click="handleSave" :loading="saving">保 存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
-import { getTaskPage, deleteTask } from '../api/task'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { getTaskPage, deleteTask, addTask, updateTask } from '../api/task'
+import { getUserList } from '../api/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, ArrowDown, ArrowUp, Download, Plus, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 // 响应式数据
 const viewType = ref('list')
@@ -275,13 +355,19 @@ const showAdvancedSearch = ref(false)
 const detailVisible = ref(false)
 const detailTask = ref({})
 const selectedTasks = ref([])
+const dialogVisible = ref(false)
+const dialogTitle = ref('')
+const taskFormRef = ref(null)
+const saving = ref(false)
+const userList = ref([])
 
 // 搜索表单
-const searchForm = reactive({
+const searchForm = ref({
   taskNo: '',
   taskName: '',
-  startPoint: '',
-  status: ''
+  taskType: '',
+  priority: '',
+  status: null,
 })
 
 // 高级搜索表单
@@ -317,24 +403,30 @@ const hasSearchConditions = computed(() => {
 // 计算当前激活的搜索条件
 const activeSearchConditions = computed(() => {
   const conditions = {}
-  
-  if (searchForm.taskNo) {
-    conditions.taskNo = { label: '任务编号', value: searchForm.taskNo }
+  if (searchForm.value.taskNo) {
+    conditions.taskNo = { label: '任务编号', value: searchForm.value.taskNo }
   }
-  if (searchForm.taskName) {
-    conditions.taskName = { label: '任务名称', value: searchForm.taskName }
+  if (searchForm.value.taskName) {
+    conditions.taskName = { label: '任务名称', value: searchForm.value.taskName }
   }
-  if (searchForm.startPoint) {
-    conditions.startPoint = { label: '起始地点', value: searchForm.startPoint }
+  if (searchForm.value.taskType) {
+    conditions.taskType = { label: '任务类型', value: searchForm.value.taskType }
   }
-  if (searchForm.status !== '') {
+  if (searchForm.value.priority) {
+    conditions.priority = { label: '优先级', value: searchForm.value.priority }
+  }
+  // 只有 status 不为 null/undefined/空字符串时才显示
+  if (
+    searchForm.value.status !== null &&
+    searchForm.value.status !== undefined &&
+    searchForm.value.status !== ''
+  ) {
     const statusMap = { 0: '未开始', 1: '进行中', 2: '已完成', 3: '已暂停' }
-    conditions.status = { label: '任务状态', value: statusMap[searchForm.status] }
+    conditions.status = { label: '任务状态', value: statusMap[searchForm.value.status] }
   }
   if (advancedSearchForm.dateRange && advancedSearchForm.dateRange.length === 2) {
     conditions.dateRange = { label: '执行时间', value: `${advancedSearchForm.dateRange[0]} 至 ${advancedSearchForm.dateRange[1]}` }
   }
-  
   return conditions
 })
 
@@ -357,8 +449,8 @@ const calendarDays = computed(() => {
     
     // 获取当天的任务
     const dayTasks = taskList.value.filter(task => {
-      if (task.lastExecuteTime) {
-        const taskDate = new Date(task.lastExecuteTime)
+      if (task.planStartTime) {
+        const taskDate = new Date(task.planStartTime)
         return taskDate.toDateString() === date.toDateString()
       }
       return false
@@ -398,6 +490,13 @@ function getStatusText(status) {
   return textMap[status] || '未知'
 }
 
+// 获取优先级类型
+function getPriorityType(priority) {
+  if (priority === '高') return 'danger'
+  if (priority === '中') return 'warning'
+  return 'info'
+}
+
 // 格式化日期时间
 function formatDateTime(dateTime) {
   if (!dateTime) return '-'
@@ -416,8 +515,9 @@ function loadTaskList() {
   // 添加基础搜索条件
   if (searchForm.taskNo) params.taskNo = searchForm.taskNo
   if (searchForm.taskName) params.taskName = searchForm.taskName
-  if (searchForm.startPoint) params.startPoint = searchForm.startPoint
-  if (searchForm.status !== '') params.status = searchForm.status
+  if (searchForm.taskType) params.taskType = searchForm.taskType
+  if (searchForm.priority) params.priority = searchForm.priority
+  if (searchForm.status !== null) params.status = searchForm.status
 
   // 添加高级搜索条件
   if (advancedSearchForm.dateRange && advancedSearchForm.dateRange.length === 2) {
@@ -427,7 +527,10 @@ function loadTaskList() {
 
   getTaskPage(params).then(res => {
     if (res.code === 200) {
-      taskList.value = res.data.records || res.data.content || []
+      taskList.value = res.data.records.map(task => ({
+        ...task,
+        executorName: task.executor ? task.executor.realName : 'N/A' 
+      }))
       pagination.total = res.data.total || res.data.totalElements || 0
       
       if (hasSearchConditions.value) {
@@ -463,15 +566,14 @@ function handleAdvancedSearch() {
 // 重置
 function handleReset() {
   searchFormRef.value?.resetFields()
-  Object.assign(searchForm, {
+  searchForm.value = {
     taskNo: '',
     taskName: '',
-    startPoint: '',
-    status: ''
-  })
-  Object.assign(advancedSearchForm, {
-    dateRange: []
-  })
+    taskType: '',
+    priority: '',
+    status: null,
+  }
+  advancedSearchForm.dateRange = []
   pagination.page = 1
   loadTaskList()
   ElMessage.info('搜索条件已重置')
@@ -481,8 +583,9 @@ function handleReset() {
 function removeSearchCondition(key) {
   if (key === 'taskNo') searchForm.taskNo = ''
   if (key === 'taskName') searchForm.taskName = ''
-  if (key === 'startPoint') searchForm.startPoint = ''
-  if (key === 'status') searchForm.status = ''
+  if (key === 'taskType') searchForm.taskType = ''
+  if (key === 'priority') searchForm.priority = ''
+  if (key === 'status') searchForm.status = null
   if (key === 'dateRange') advancedSearchForm.dateRange = []
   
   pagination.page = 1
@@ -496,12 +599,23 @@ function toggleAdvancedSearch() {
 
 // 新增任务
 function handleAdd() {
-  ElMessage.info('新增任务功能开发中...')
+  dialogTitle.value = '新增任务'
+  dialogVisible.value = true
+  // 重置表单，下次打开时清空
+  nextTick(() => {
+    taskFormRef.value?.resetFields()
+    taskForm.value.taskId = null
+  })
 }
 
 // 编辑任务
 function handleEdit(row) {
-  ElMessage.info('编辑任务功能开发中...')
+  dialogTitle.value = '编辑任务'
+  dialogVisible.value = true
+  nextTick(() => {
+    Object.assign(taskForm.value, row)
+    taskForm.value.planTime = [row.planStartTime, row.planFinishTime]
+  })
 }
 
 // 查看任务详情
@@ -589,8 +703,73 @@ function goToToday() {
   currentMonth.value = today.getMonth() + 1
 }
 
+// 保存任务
+function handleSave() {
+  taskFormRef.value?.validate((valid) => {
+    if (valid) {
+      saving.value = true
+      
+      const [startTime, finishTime] = taskForm.value.planTime
+      const dataToSave = {
+        ...taskForm.value,
+        planStartTime: startTime,
+        planFinishTime: finishTime,
+      }
+      delete dataToSave.planTime // 移除临时字段
+
+      const apiCall = dataToSave.taskId ? updateTask : addTask
+      apiCall(dataToSave).then(res => {
+        if (res.code === 200) {
+          ElMessage.success(dataToSave.taskId ? '更新成功' : '新增成功')
+          dialogVisible.value = false
+          loadTaskList()
+        } else {
+          ElMessage.error(res.message || '操作失败')
+        }
+      }).catch(error => {
+        console.error('保存任务失败:', error)
+        ElMessage.error('操作失败')
+      }).finally(() => {
+        saving.value = false
+      })
+    }
+  })
+}
+
+// 关闭弹窗
+function handleClose() {
+  dialogVisible.value = false
+  taskFormRef.value?.resetFields()
+  taskForm.value = {
+    taskId: null,
+    taskName: '',
+    taskType: '常规巡检',
+    priority: '中',
+    planTime: [],
+    planStartTime: '',
+    planFinishTime: '',
+    executorId: null,
+    description: '',
+  }
+}
+
+// 获取用户列表
+async function fetchUserList() {
+  try {
+    const res = await getUserList() // 假设此API返回 { code: 200, data: [...] }
+    if (res.code === 200) {
+      userList.value = res.data
+    } else {
+      ElMessage.error('获取用户列表失败')
+    }
+  } catch (error) {
+    console.error('获取用户列表失败:', error)
+  }
+}
+
 onMounted(() => {
   loadTaskList()
+  fetchUserList()
 })
 </script>
 

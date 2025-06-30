@@ -16,12 +16,13 @@ public class TaskInfoServiceImpl extends ServiceImpl<TaskInfoMapper, TaskInfo> i
 
     @Override
     public IPage<TaskInfo> findByConditions(
-            String taskNo, 
-            String taskName, 
-            String startPoint, 
-            Integer status, 
-            String startDate, 
-            String endDate, 
+            String taskNo,
+            String taskName,
+            String taskType,
+            String priority,
+            Integer status,
+            String startDate,
+            String endDate,
             IPage<TaskInfo> page) {
         
         QueryWrapper<TaskInfo> queryWrapper = new QueryWrapper<>();
@@ -36,9 +37,14 @@ public class TaskInfoServiceImpl extends ServiceImpl<TaskInfoMapper, TaskInfo> i
             queryWrapper.like("task_name", taskName);
         }
         
-        // 起始地点模糊查询
-        if (startPoint != null && !startPoint.trim().isEmpty()) {
-            queryWrapper.like("start_point", startPoint);
+        // 任务类型精确查询
+        if (taskType != null && !taskType.trim().isEmpty()) {
+            queryWrapper.eq("task_type", taskType);
+        }
+
+        // 优先级精确查询
+        if (priority != null && !priority.trim().isEmpty()) {
+            queryWrapper.eq("priority", priority);
         }
         
         // 状态精确查询
@@ -46,18 +52,20 @@ public class TaskInfoServiceImpl extends ServiceImpl<TaskInfoMapper, TaskInfo> i
             queryWrapper.eq("status", status);
         }
         
-        // 时间范围查询
+        // 时间范围查询 (改为查询计划开始时间)
         if (startDate != null && !startDate.trim().isEmpty()) {
             LocalDateTime startDateTime = LocalDateTime.parse(startDate + " 00:00:00", 
                 DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            queryWrapper.ge("last_execute_time", startDateTime);
+            queryWrapper.ge("plan_start_time", startDateTime);
         }
         
         if (endDate != null && !endDate.trim().isEmpty()) {
             LocalDateTime endDateTime = LocalDateTime.parse(endDate + " 23:59:59", 
                 DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            queryWrapper.le("last_execute_time", endDateTime);
+            queryWrapper.le("plan_start_time", endDateTime);
         }
+        
+        queryWrapper.orderByDesc("create_time");
         
         return this.page(page, queryWrapper);
     }

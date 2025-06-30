@@ -67,7 +67,7 @@ public class TestController {
             SysRole adminRole = new SysRole();
             adminRole.setRoleName("admin");
             adminRole.setPermission("sys:*:*");
-            adminRole.setSort(1);
+            adminRole.setRoleSort(1);
             adminRole.setStatus(1);
             adminRole.setCreateTime(LocalDateTime.now());
             adminRole.setRemark("超级管理员");
@@ -76,7 +76,7 @@ public class TestController {
             SysRole userRole = new SysRole();
             userRole.setRoleName("user");
             userRole.setPermission("sys:user:view,sys:task:view,sys:defect:view");
-            userRole.setSort(2);
+            userRole.setRoleSort(2);
             userRole.setStatus(1);
             userRole.setCreateTime(LocalDateTime.now());
             userRole.setRemark("普通用户");
@@ -85,7 +85,7 @@ public class TestController {
             SysRole operatorRole = new SysRole();
             operatorRole.setRoleName("operator");
             operatorRole.setPermission("sys:user:view,sys:task:*,sys:defect:*");
-            operatorRole.setSort(3);
+            operatorRole.setRoleSort(3);
             operatorRole.setStatus(1);
             operatorRole.setCreateTime(LocalDateTime.now());
             operatorRole.setRemark("操作员");

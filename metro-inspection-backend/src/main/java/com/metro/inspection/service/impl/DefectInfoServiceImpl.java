@@ -83,13 +83,13 @@ public class DefectInfoServiceImpl extends ServiceImpl<DefectInfoMapper, DefectI
         if (startDate != null && !startDate.trim().isEmpty()) {
             LocalDateTime startDateTime = LocalDateTime.parse(startDate + " 00:00:00", 
                 DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            queryWrapper.ge("report_time", startDateTime);
+            queryWrapper.ge("found_time", startDateTime);
         }
         
         if (endDate != null && !endDate.trim().isEmpty()) {
             LocalDateTime endDateTime = LocalDateTime.parse(endDate + " 23:59:59", 
                 DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            queryWrapper.le("report_time", endDateTime);
+            queryWrapper.le("found_time", endDateTime);
         }
         
         return this.page(page, queryWrapper);
