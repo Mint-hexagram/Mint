@@ -2,6 +2,7 @@ package com.metro.inspection.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @TableName("sys_menu")
 public class SysMenu {
@@ -41,6 +42,9 @@ public class SysMenu {
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
+    @TableField(exist = false)
+    private List<SysMenu> children;
+
     // 无参构造函数 - MyBatis-Plus必需
     public SysMenu() {
     }
@@ -70,4 +74,10 @@ public class SysMenu {
     public void setStatus(Integer status) { this.status = status; }
     public LocalDateTime getCreateTime() { return createTime; }
     public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
+    public List<SysMenu> getChildren() {
+        return children;
+    }
+    public void setChildren(List<SysMenu> children) {
+        this.children = children;
+    }
 } 

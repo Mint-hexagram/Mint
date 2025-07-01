@@ -2,6 +2,7 @@ package com.metro.inspection.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.metro.inspection.entity.TaskInfo;
 import com.metro.inspection.mapper.TaskInfoMapper;
@@ -52,7 +53,7 @@ public class TaskInfoServiceImpl extends ServiceImpl<TaskInfoMapper, TaskInfo> i
             queryWrapper.eq("status", status);
         }
         
-        // 时间范围查询 (改为查询计划开始时间)
+        // 时间范围查询 (查询计划开始时间)
         if (startDate != null && !startDate.trim().isEmpty()) {
             LocalDateTime startDateTime = LocalDateTime.parse(startDate + " 00:00:00", 
                 DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
