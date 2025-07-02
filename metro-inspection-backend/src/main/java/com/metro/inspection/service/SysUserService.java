@@ -11,4 +11,9 @@ public interface SysUserService extends IService<SysUser> {
     
     // 根据用户名查找用户
     SysUser getByUsername(String username);
+
+    // 重置为默认密码
+    void resetPassword(Long userId);
+    // 重置为指定密码
+    void resetPassword(Long userId, String newPassword);
 } 

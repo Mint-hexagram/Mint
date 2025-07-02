@@ -29,7 +29,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             queryWrapper.eq(SysRole::getStatus, Integer.parseInt(status));
         }
         
-        queryWrapper.orderByAsc(SysRole::getRoleSort);
+        queryWrapper.orderByAsc(SysRole::getRoleId);
         
         return this.page(page, queryWrapper);
     }

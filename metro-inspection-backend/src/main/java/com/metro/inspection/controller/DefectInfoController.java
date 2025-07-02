@@ -7,6 +7,7 @@ import com.metro.inspection.entity.DefectInfo;
 import com.metro.inspection.service.DefectInfoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -46,6 +47,66 @@ public class DefectInfoController {
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         defectInfoService.removeById(id);
+        return ApiResponse.success(null);
+    }
+
+    @PostMapping("/{id}/confirm")
+    public ApiResponse<Void> confirmDefect(@PathVariable Long id) {
+        DefectInfo defect = defectInfoService.getById(id);
+        if (defect == null) {
+            return ApiResponse.error("缺陷不存在");
+        }
+        defect.setIsReal(1); // 1 表示属实
+        defectInfoService.updateById(defect);
+        return ApiResponse.success(null);
+    }
+
+    @PostMapping("/{id}/rectify")
+    public ApiResponse<Void> markAsRectified(@PathVariable Long id) {
+        DefectInfo defect = defectInfoService.getById(id);
+        if (defect == null) {
+            return ApiResponse.error("缺陷不存在");
+        }
+        defect.setStatus(2); // 2 表示已整改
+        defectInfoService.updateById(defect);
+        return ApiResponse.success(null);
+    }
+
+    @PostMapping("/batch-confirm")
+    public ApiResponse<Void> batchConfirmDefects(@RequestBody List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return ApiResponse.error("未选择任何缺陷");
+        }
+        List<DefectInfo> defectsToUpdate = new java.util.ArrayList<>();
+        for (Long id : ids) {
+            DefectInfo defect = defectInfoService.getById(id);
+            if (defect != null && defect.getIsReal() != 1) {
+                defect.setIsReal(1);
+                defectsToUpdate.add(defect);
+            }
+        }
+        if (!defectsToUpdate.isEmpty()) {
+            defectInfoService.updateBatchById(defectsToUpdate);
+        }
+        return ApiResponse.success(null);
+    }
+
+    @PostMapping("/batch-rectify")
+    public ApiResponse<Void> batchMarkAsRectified(@RequestBody List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return ApiResponse.error("未选择任何缺陷");
+        }
+        List<DefectInfo> defectsToUpdate = new java.util.ArrayList<>();
+        for (Long id : ids) {
+            DefectInfo defect = defectInfoService.getById(id);
+            if (defect != null && defect.getStatus() != 2) {
+                defect.setStatus(2);
+                defectsToUpdate.add(defect);
+            }
+        }
+        if (!defectsToUpdate.isEmpty()) {
+            defectInfoService.updateBatchById(defectsToUpdate);
+        }
         return ApiResponse.success(null);
     }
 

@@ -69,7 +69,8 @@ public class SysRoleController {
 
     @PostMapping("/{id}/menus")
     public ApiResponse<Void> assignMenus(@PathVariable Long id, @RequestBody Map<String, List<Long>> body) {
-        // TODO: 实现菜单分配逻辑（未实现，待开发）
+        List<Long> menuIds = body.get("menuIds");
+        // TODO: 实现菜单分配逻辑
         return ApiResponse.success(null);
     }
 } 

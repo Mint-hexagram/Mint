@@ -24,23 +24,12 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            // CSRF防护配置
-            .csrf(csrf -> csrf
-                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-                .ignoringRequestMatchers("/api/auth/**") // 认证接口忽略CSRF
-            )
-            .cors(cors -> cors.configure(http))  // 启用CORS
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))  // 无状态会话
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configure(http))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/api/auth/**").permitAll()  // 认证接口放行
-                .requestMatchers("/api/test/**").permitAll()  // 测试接口放行
-                .requestMatchers("/api/**").authenticated()   // 其他API需要认证
-                .anyRequest().authenticated()  // 其他请求需要认证
-            )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-        
+                .anyRequest().permitAll() // 所有请求都允许匿名访问
+            );
         return http.build();
     }
 

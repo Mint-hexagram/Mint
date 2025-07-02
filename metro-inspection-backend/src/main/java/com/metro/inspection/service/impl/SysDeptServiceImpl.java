@@ -56,7 +56,9 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         List<SysDept> children = parentMap.get(parent.getDeptId());
         if (children != null) {
             children.forEach(child -> setChildren(child, parentMap));
-            // 这里需要为SysDept添加children字段，暂时返回空列表
+            parent.setChildren(children);
+        } else {
+            parent.setChildren(new ArrayList<>());
         }
     }
 } 

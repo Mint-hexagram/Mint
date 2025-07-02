@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/sys-menu")
+@RequestMapping("/api/menu")
 public class SysMenuController {
     @Autowired
     private SysMenuService sysMenuService;

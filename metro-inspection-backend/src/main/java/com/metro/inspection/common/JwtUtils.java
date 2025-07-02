@@ -32,7 +32,6 @@ public class JwtUtils {
         claims.put("roles", roles);
         
         return Jwts.builder()
-                // Deprecated methods below, consider migrating to new API in the future
                 .setClaims(claims)
                 .setSubject(username)
                 .setIssuedAt(new Date())

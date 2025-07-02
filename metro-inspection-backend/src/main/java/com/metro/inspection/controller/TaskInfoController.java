@@ -7,16 +7,21 @@ import com.metro.inspection.entity.TaskInfo;
 import com.metro.inspection.service.TaskInfoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import org.springframework.validation.annotation.Validated;
 
 @RestController
 @RequestMapping("/api/tasks")
+@Validated
 public class TaskInfoController {
     @Autowired
     private TaskInfoService taskInfoService;
 
     @GetMapping
-    public ApiResponse<IPage<TaskInfo>> getTaskPage(
+    public ApiResponse<Map<String, Object>> getTaskPage(
             @RequestParam(defaultValue = "1") int current,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String taskNo,
@@ -31,7 +36,10 @@ public class TaskInfoController {
         IPage<TaskInfo> taskPage = taskInfoService.findByConditions(
             taskNo, taskName, taskType, priority, status, startDate, endDate, page);
         
-        return ApiResponse.success(taskPage);
+        Map<String, Object> result = new HashMap<>();
+        result.put("records", taskPage.getRecords());
+        result.put("total", taskPage.getTotal());
+        return ApiResponse.success(result);
     }
 
     @GetMapping("/all")
@@ -50,13 +58,13 @@ public class TaskInfoController {
     }
 
     @PostMapping
-    public ApiResponse<TaskInfo> create(@RequestBody TaskInfo taskInfo) {
+    public ApiResponse<TaskInfo> create(@Valid @RequestBody TaskInfo taskInfo) {
         taskInfoService.save(taskInfo);
         return ApiResponse.success(taskInfo);
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<TaskInfo> update(@PathVariable Long id, @RequestBody TaskInfo taskInfo) {
+    public ApiResponse<TaskInfo> update(@PathVariable Long id, @Valid @RequestBody TaskInfo taskInfo) {
         taskInfo.setTaskId(id);
         taskInfoService.updateById(taskInfo);
         return ApiResponse.success(taskInfo);

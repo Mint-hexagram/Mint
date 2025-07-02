@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/sys-dept")
+@RequestMapping("/api/dept")
 public class SysDeptController {
     @Autowired
     private SysDeptService sysDeptService;

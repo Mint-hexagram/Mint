@@ -2,6 +2,7 @@ package com.metro.inspection.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @TableName("sys_dept")
 public class SysDept {
@@ -35,6 +36,9 @@ public class SysDept {
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
+    @TableField(exist = false)
+    private List<SysDept> children;
+
     // 无参构造函数 - MyBatis-Plus必需
     public SysDept() {
     }
@@ -60,4 +64,6 @@ public class SysDept {
     public void setEmail(String email) { this.email = email; }
     public Integer getSort() { return sort; }
     public void setSort(Integer sort) { this.sort = sort; }
+    public List<SysDept> getChildren() { return children; }
+    public void setChildren(List<SysDept> children) { this.children = children; }
 } 

@@ -23,17 +23,11 @@ public class SysRole {
     @TableField("data_scope")
     private String dataScope;
 
-    @TableField("role_sort")
-    private Integer roleSort;
-
     @TableField("status")
     private Integer status;
 
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
-
-    @TableField("remark")
-    private String remark;
 
     // 无参构造函数 - MyBatis-Plus必需
     public SysRole() {
@@ -52,12 +46,8 @@ public class SysRole {
     public void setPermission(String permission) { this.permission = permission; }
     public String getDataScope() { return dataScope; }
     public void setDataScope(String dataScope) { this.dataScope = dataScope; }
-    public Integer getRoleSort() { return roleSort; }
-    public void setRoleSort(Integer roleSort) { this.roleSort = roleSort; }
     public Integer getStatus() { return status; }
     public void setStatus(Integer status) { this.status = status; }
     public LocalDateTime getCreateTime() { return createTime; }
     public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
-    public String getRemark() { return remark; }
-    public void setRemark(String remark) { this.remark = remark; }
 } 
