@@ -1,0 +1,206 @@
+要设计地铁隧道巡线车云平台的数据库，需围绕 任务管理、缺陷管理、系统管理、日志监控 等核心模块，梳理实体关系并规范数据结构。以下是详细的数据库设计方案：
+一、数据库整体架构
+数据库名称：metro_inspection_db
+基于 关系型数据库（MySQL） 设计，采用 InnoDB 引擎 保证事务性和并发性能，通过外键关联实现模块解耦，核心模块包括：
+
+系统管理：用户、角色、菜单、部门、权限关联、操作日志、登录日志
+业务数据：任务信息、缺陷信息
+监控数据：服务运行状态
+二、核心表结构设计
+1. 系统管理模块
+1.1 部门表（sys_dept）
+管理组织架构，支持树形层级。
+
+sql
+CREATE TABLE `sys_dept` (
+  `dept_id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '部门ID',
+  `parent_id` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '父部门ID',
+  `dept_name` VARCHAR(50) NOT NULL COMMENT '部门名称',
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1正常，0停用',
+  `create_time` DATETIME NOT NULL COMMENT '创建时间',
+  PRIMARY KEY (`dept_id`),
+  KEY `idx_parent_id` (`parent_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='部门管理表';
+1.2 用户表（sys_user）
+存储用户账号、权限、状态等信息。
+
+sql
+CREATE TABLE `sys_user` (
+  `user_id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '用户ID',
+  `username` VARCHAR(50) NOT NULL UNIQUE COMMENT '登录账号',
+  `nickname` VARCHAR(50) COMMENT '用户昵称',
+  `password` VARCHAR(100) NOT NULL COMMENT '密码（BCrypt加密存储）',
+  `phone` VARCHAR(20) COMMENT '手机号',
+  `dept_id` INT UNSIGNED COMMENT '所属部门ID',
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1正常，0停用',
+  `create_time` DATETIME NOT NULL COMMENT '创建时间',
+  `remark` VARCHAR(200) COMMENT '备注',
+  PRIMARY KEY (`user_id`),
+  KEY `idx_dept_id` (`dept_id`),
+  CONSTRAINT `fk_sys_user_dept` FOREIGN KEY (`dept_id`) REFERENCES `sys_dept`(`dept_id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户管理表';
+1.3 角色表（sys_role）
+基于 RBAC 模型的角色定义，关联权限。
+
+sql
+CREATE TABLE `sys_role` (
+  `role_id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '角色ID',
+  `role_name` VARCHAR(50) NOT NULL COMMENT '角色名称',
+  `permission` VARCHAR(100) COMMENT '权限字符（如 sys:user:manage）',
+  `sort` INT COMMENT '显示顺序',
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1正常，0停用',
+  `create_time` DATETIME NOT NULL COMMENT '创建时间',
+  `remark` VARCHAR(200) COMMENT '备注',
+  PRIMARY KEY (`role_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色管理表';
+1.4 菜单表（sys_menu）
+管理系统菜单（含目录、按钮），支持前端路由。
+
+sql
+CREATE TABLE `sys_menu` (
+  `menu_id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '菜单ID',
+  `parent_id` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '父菜单ID',
+  `menu_name` VARCHAR(50) NOT NULL COMMENT '菜单名称',
+  `path` VARCHAR(200) COMMENT '路由路径',
+  `component` VARCHAR(200) COMMENT '前端组件路径',
+  `icon` VARCHAR(50) COMMENT '图标',
+  `type` TINYINT NOT NULL COMMENT '类型：0目录，1菜单，2按钮',
+  `permission` VARCHAR(100) COMMENT '权限字符（如 sys:user:list）',
+  `sort` INT COMMENT '显示顺序',
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1正常，0停用',
+  `create_time` DATETIME NOT NULL COMMENT '创建时间',
+  PRIMARY KEY (`menu_id`),
+  KEY `idx_parent_id` (`parent_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='菜单管理表';
+1.5 权限关联表
+用户 - 角色关联（sys_user_role）：多对多关系，实现用户权限继承。
+角色 - 菜单关联（sys_role_menu）：多对多关系，实现角色权限分配。
+
+sql
+-- 用户-角色关联表
+CREATE TABLE `sys_user_role` (
+  `user_id` INT UNSIGNED NOT NULL COMMENT '用户ID',
+  `role_id` INT UNSIGNED NOT NULL COMMENT '角色ID',
+  PRIMARY KEY (`user_id`, `role_id`),
+  CONSTRAINT `fk_sys_user_role_user` FOREIGN KEY (`user_id`) REFERENCES `sys_user`(`user_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_sys_user_role_role` FOREIGN KEY (`role_id`) REFERENCES `sys_role`(`role_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户角色关联表';
+
+-- 角色-菜单关联表
+CREATE TABLE `sys_role_menu` (
+  `role_id` INT UNSIGNED NOT NULL COMMENT '角色ID',
+  `menu_id` INT UNSIGNED NOT NULL COMMENT '菜单ID',
+  PRIMARY KEY (`role_id`, `menu_id`),
+  CONSTRAINT `fk_sys_role_menu_role` FOREIGN KEY (`role_id`) REFERENCES `sys_role`(`role_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_sys_role_menu_menu` FOREIGN KEY (`menu_id`) REFERENCES `sys_menu`(`menu_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色菜单关联表';
+1.6 日志表
+操作日志（sys_oper_log）：记录用户操作轨迹，用于审计。
+登录日志（sys_login_log）：记录用户登录状态、IP、设备等信息。
+
+sql
+-- 操作日志表
+CREATE TABLE `sys_oper_log` (
+  `oper_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '日志ID',
+  `user_id` INT UNSIGNED COMMENT '操作用户ID',
+  `module` VARCHAR(50) COMMENT '操作模块（如任务管理）',
+  `oper_type` VARCHAR(20) COMMENT '操作类型（新增、修改、删除）',
+  `oper_desc` VARCHAR(200) COMMENT '操作描述',
+  `request_param` TEXT COMMENT '请求参数（JSON格式）',
+  `oper_time` DATETIME NOT NULL COMMENT '操作时间',
+  `ip` VARCHAR(50) COMMENT '客户端IP',
+  `device` VARCHAR(200) COMMENT '设备信息（浏览器/系统）',
+  PRIMARY KEY (`oper_id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_oper_time` (`oper_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作日志表';
+
+-- 登录日志表
+CREATE TABLE `sys_login_log` (
+  `login_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '日志ID',
+  `user_id` INT UNSIGNED COMMENT '用户ID',
+  `login_time` DATETIME NOT NULL COMMENT '登录时间',
+  `logout_time` DATETIME COMMENT '退出时间',
+  `ip` VARCHAR(50) COMMENT '登录IP',
+  `device` VARCHAR(200) COMMENT '设备信息',
+  `status` TINYINT COMMENT '登录状态：1成功，0失败',
+  `error_msg` VARCHAR(200) COMMENT '错误信息',
+  PRIMARY KEY (`login_id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_login_time` (`login_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='登录日志表';
+2. 业务数据模块
+2.1 任务表（task_info）
+管理巡检任务的基本信息、执行状态。
+
+sql
+CREATE TABLE `task_info` (
+  `task_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '任务ID',
+  `task_no` VARCHAR(50) NOT NULL UNIQUE COMMENT '任务编号（如 TASK-20240301-001）',
+  `task_name` VARCHAR(50) NOT NULL COMMENT '任务名称',
+  `start_point` VARCHAR(50) COMMENT '起始地点',
+  `distance` DECIMAL(10,2) COMMENT '任务距离（公里）',
+  `creator_id` INT UNSIGNED COMMENT '创建人ID',
+  `executor_id` INT UNSIGNED COMMENT '执行人ID',
+  `last_execute_time` DATETIME COMMENT '最后执行时间',
+  `finish_time` DATETIME COMMENT '巡视完成时间',
+  `upload_time` DATETIME COMMENT '数据上传时间',
+  `status` TINYINT COMMENT '任务状态：1进行中，2已完成，3已取消',
+  PRIMARY KEY (`task_id`),
+  KEY `idx_creator_id` (`creator_id`),
+  KEY `idx_executor_id` (`executor_id`),
+  CONSTRAINT `fk_task_creator` FOREIGN KEY (`creator_id`) REFERENCES `sys_user`(`user_id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_task_executor` FOREIGN KEY (`executor_id`) REFERENCES `sys_user`(`user_id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务信息表';
+2.2 缺陷表（defect_info）
+记录巡检发现的缺陷详情，关联任务。
+
+sql
+CREATE TABLE `defect_info` (
+  `defect_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '缺陷ID',
+  `task_id` BIGINT UNSIGNED NOT NULL COMMENT '关联任务ID',
+  `defect_type` VARCHAR(50) COMMENT '缺陷类型（如裂缝、渗漏）',
+  `position` VARCHAR(50) COMMENT '距离原点位置（如 125.6m）',
+  `image_url` TEXT COMMENT '缺陷图片路径（JSON数组存储多图）',
+  `is_real` TINYINT COMMENT '是否属实：1是，0否',
+  `severity` TINYINT COMMENT '严重程度：1轻微，2中等，3严重',
+  `length` DECIMAL(10,2) COMMENT '缺陷长度（米）',
+  `area` DECIMAL(10,2) COMMENT '缺陷面积（平方米）',
+  `count` INT COMMENT '缺陷数量',
+  `rectify_method` VARCHAR(200) COMMENT '整改方式',
+  `report_time` DATETIME COMMENT '上报时间',
+  `rectify_status` TINYINT COMMENT '整改状态：1已整改，0未整改',
+  PRIMARY KEY (`defect_id`),
+  KEY `idx_task_id` (`task_id`),
+  KEY `idx_report_time` (`report_time`),
+  CONSTRAINT `fk_defect_task` FOREIGN KEY (`task_id`) REFERENCES `task_info`(`task_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='缺陷信息表';
+3. 监控模块（sys_service_monitor）
+记录服务运行状态、资源占用（CPU、内存）。
+
+sql
+CREATE TABLE `sys_service_monitor` (
+  `monitor_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '监控ID',
+  `service_name` VARCHAR(50) NOT NULL COMMENT '服务名称',
+  `status` TINYINT COMMENT '状态：1运行，0异常',
+  `cpu_usage` DECIMAL(5,2) COMMENT 'CPU使用率',
+  `memory_usage` DECIMAL(5,2) COMMENT '内存使用率',
+  `record_time` DATETIME NOT NULL COMMENT '记录时间',
+  PRIMARY KEY (`monitor_id`),
+  KEY `idx_service_name` (`service_name`),
+  KEY `idx_record_time` (`record_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='服务监控表';
+三、设计说明
+关系设计：
+用户与部门 多对一，角色与用户、菜单 多对多，任务与缺陷 一对多，通过外键关联保证数据一致性。
+日志表独立存储，避免业务表冗余，提升查询性能。
+数据加密：
+用户密码采用 BCrypt 加密 存储，防止明文泄露。
+性能优化：
+高频查询字段（如任务编号、用户 ID）建立索引，加速搜索。
+大文本字段（如图片路径、请求参数）使用 TEXT 类型，平衡存储与查询。
+扩展能力：
+状态字段采用 TINYINT 而非枚举，方便后续扩展（如任务状态新增 “暂停”）。
+外键约束采用 ON DELETE SET NULL 或 CASCADE，灵活处理数据删除逻辑。
+
+通过以上设计，数据库可支撑 任务管理、缺陷追溯、权限控制、日志审计 等核心功能，满足地铁运维场景的高可靠、高并发需求。

@@ -1,0 +1,32 @@
+# Java
+/metro-inspection-backend/target/
+*.class
+*.log
+
+# Node.js
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.env
+
+# IDE & Editor
+*.iml
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Archives & temp
+*.7z
+*.zip
+*.bak
+*.tmp
+
+# SSL & secrets
+ssl/
+.env 
+
+
+* text=auto
+*.js *.java *.vue text eol=lf
