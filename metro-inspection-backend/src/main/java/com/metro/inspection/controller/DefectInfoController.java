@@ -8,6 +8,14 @@ import com.metro.inspection.service.DefectInfoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.util.StringUtils;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.UUID;
 
 import java.util.List;
 
@@ -128,5 +136,28 @@ public class DefectInfoController {
             taskId, defectType, rectifyStatus, isReal, severity, position, startDate, endDate, page
         );
         return ApiResponse.success(result);
+    }
+
+    @PostMapping("/upload")
+    public ApiResponse<String> uploadImage(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return ApiResponse.error("上传文件为空");
+        }
+        try {
+            String uploadDir = System.getProperty("user.dir") + "/static/upload/";
+            Files.createDirectories(Paths.get(uploadDir));
+            String originalFilename = StringUtils.cleanPath(file.getOriginalFilename());
+            String ext = originalFilename.contains(".") ? originalFilename.substring(originalFilename.lastIndexOf('.')) : "";
+            String newFileName = UUID.randomUUID().toString().replace("-","") + ext;
+            File dest = new File(uploadDir + newFileName);
+            file.transferTo(dest);
+            String fileUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
+                    .path("/static/upload/")
+                    .path(newFileName)
+                    .toUriString();
+            return ApiResponse.success(fileUrl);
+        } catch (IOException e) {
+            return ApiResponse.error("图片上传失败: " + e.getMessage());
+        }
     }
 } 

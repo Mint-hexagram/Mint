@@ -8,86 +8,47 @@ public class SysOperLog {
     @TableId(value = "oper_id", type = IdType.AUTO)
     private Long operId;
 
-    @TableField("title")
-    private String title;
+    @TableField("user_id")
+    private Integer userId;
 
-    @TableField("business_type")
-    private Integer businessType;
+    @TableField("module")
+    private String module;
 
-    @TableField("method")
-    private String method;
+    @TableField("oper_type")
+    private String operType;
 
-    @TableField("request_method")
-    private String requestMethod;
+    @TableField("oper_desc")
+    private String operDesc;
 
-    @TableField("operator_type")
-    private Integer operatorType;
-
-    @TableField("oper_name")
-    private String operName;
-
-    @TableField("dept_name")
-    private String deptName;
-
-    @TableField("oper_url")
-    private String operUrl;
-
-    @TableField("oper_ip")
-    private String operIp;
-
-    @TableField("oper_location")
-    private String operLocation;
-
-    @TableField("oper_param")
-    private String operParam;
-
-    @TableField("json_result")
-    private String jsonResult;
-
-    @TableField("status")
-    private Integer status;
-
-    @TableField("error_msg")
-    private String errorMsg;
+    @TableField("request_param")
+    private String requestParam;
 
     @TableField("oper_time")
     private LocalDateTime operTime;
 
-    // 无参构造函数 - MyBatis-Plus必需
-    public SysOperLog() {
-    }
+    @TableField("ip")
+    private String ip;
 
-    // getters and setters
+    @TableField("device")
+    private String device;
+
+    // getter/setter
     public Long getOperId() { return operId; }
     public void setOperId(Long operId) { this.operId = operId; }
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
-    public Integer getBusinessType() { return businessType; }
-    public void setBusinessType(Integer businessType) { this.businessType = businessType; }
-    public String getMethod() { return method; }
-    public void setMethod(String method) { this.method = method; }
-    public String getRequestMethod() { return requestMethod; }
-    public void setRequestMethod(String requestMethod) { this.requestMethod = requestMethod; }
-    public Integer getOperatorType() { return operatorType; }
-    public void setOperatorType(Integer operatorType) { this.operatorType = operatorType; }
-    public String getOperName() { return operName; }
-    public void setOperName(String operName) { this.operName = operName; }
-    public String getDeptName() { return deptName; }
-    public void setDeptName(String deptName) { this.deptName = deptName; }
-    public String getOperUrl() { return operUrl; }
-    public void setOperUrl(String operUrl) { this.operUrl = operUrl; }
-    public String getOperIp() { return operIp; }
-    public void setOperIp(String operIp) { this.operIp = operIp; }
-    public String getOperLocation() { return operLocation; }
-    public void setOperLocation(String operLocation) { this.operLocation = operLocation; }
-    public String getOperParam() { return operParam; }
-    public void setOperParam(String operParam) { this.operParam = operParam; }
-    public String getJsonResult() { return jsonResult; }
-    public void setJsonResult(String jsonResult) { this.jsonResult = jsonResult; }
-    public Integer getStatus() { return status; }
-    public void setStatus(Integer status) { this.status = status; }
-    public String getErrorMsg() { return errorMsg; }
-    public void setErrorMsg(String errorMsg) { this.errorMsg = errorMsg; }
+    public Integer getUserId() { return userId; }
+    public void setUserId(Integer userId) { this.userId = userId; }
+    public String getModule() { return module; }
+    public void setModule(String module) { this.module = module; }
+    public String getOperType() { return operType; }
+    public void setOperType(String operType) { this.operType = operType; }
+    public String getOperDesc() { return operDesc; }
+    public void setOperDesc(String operDesc) { this.operDesc = operDesc; }
+    public String getRequestParam() { return requestParam; }
+    public void setRequestParam(String requestParam) { this.requestParam = requestParam; }
     public LocalDateTime getOperTime() { return operTime; }
     public void setOperTime(LocalDateTime operTime) { this.operTime = operTime; }
+    public String getIp() { return ip; }
+    public void setIp(String ip) { this.ip = ip; }
+    public String getDevice() { return device; }
+    public void setDevice(String device) { this.device = device; }
 } 

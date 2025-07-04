@@ -42,6 +42,10 @@ service.interceptors.response.use(
     if (res.code === 200) {
       return res
     } else {
+      // 新增：如果是缺陷编号唯一约束冲突，不弹全局ElMessage，交由业务代码处理
+      if (res.message && res.message.includes('Duplicate entry') && res.message.includes('defect_no')) {
+        return Promise.reject(new Error(res.message))
+      }
       ElMessage({
         message: res.message || 'Error',
         type: 'error',

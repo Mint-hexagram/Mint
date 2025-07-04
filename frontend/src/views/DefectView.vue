@@ -227,7 +227,13 @@
           </el-table-column>
           <el-table-column prop="imageUrl" label="缺陷图片" width="100" align="center">
             <template #default="scope">
-              <el-button v-if="scope.row.imageUrl" type="text" @click="showImageModal(scope.row)">查看图片</el-button>
+              <el-image
+                v-if="scope.row.imageUrl"
+                :src="scope.row.imageUrl"
+                style="width: 60px; height: 60px; cursor: pointer; object-fit: cover; border-radius: 4px;"
+                fit="cover"
+                @click="showImagePreview(scope.row)"
+              />
               <span v-else>无图片</span>
             </template>
           </el-table-column>
@@ -271,38 +277,31 @@
 
     <!-- 图片预览模态框 -->
     <el-dialog
-      v-model="modalVisible"
-      title="缺陷详情"
-      width="60%"
-      :before-close="closeModal"
+      v-model="imagePreviewVisible"
+      title="图片预览"
+      width="800px"
+      :close-on-click-modal="true"
+      @close="closeImagePreview"
     >
-      <div class="modal-content">
-        <div class="modal-image" v-if="modalRow.imageUrl">
-          <img :src="modalRow.imageUrl" alt="缺陷图片" style="max-width: 100%; height: auto;" />
+      <div style="display: flex; align-items: center; min-height: 500px; height: 500px;">
+        <div style="display: flex; flex-direction: column; gap: 32px; align-items: center; justify-content: center; width: 120px; min-width: 120px; height: 100%;">
+          <el-button @click="downloadImage" :icon="Download" circle size="large" style="box-shadow: 0 2px 8px rgba(0,0,0,0.08);" />
+          <el-button @click="rotateImage" :icon="Refresh" circle size="large" style="box-shadow: 0 2px 8px rgba(0,0,0,0.08);" />
+          <el-button @click="zoomInImage" :icon="Plus" circle size="large" style="box-shadow: 0 2px 8px rgba(0,0,0,0.08);" />
+          <el-button @click="zoomOutImage" :icon="Minus" circle size="large" style="box-shadow: 0 2px 8px rgba(0,0,0,0.08);" />
         </div>
-        <div class="modal-image" v-else>
-          <div style="text-align: center; padding: 50px; color: #999;">暂无图片</div>
+        <div style="flex: 1; display: flex; justify-content: center; align-items: center; height: 100%; overflow: hidden; background: #fafbfc; border-radius: 8px; margin-left: 32px; max-width: 600px; max-height: 500px;">
+          <img
+            :src="imagePreviewUrl"
+            :style="getImageStyle()"
+            @mousedown="startDrag"
+            @mousemove="onDrag"
+            @mouseup="endDrag"
+            @mouseleave="endDrag"
+            @dblclick="resetDrag"
+            draggable="false"
+          />
         </div>
-        <el-descriptions :column="2" border style="margin-top: 20px;">
-          <el-descriptions-item label="缺陷类型">{{ modalRow.defectType }}</el-descriptions-item>
-          <el-descriptions-item label="所属任务">{{ modalRow.taskId }}</el-descriptions-item>
-          <el-descriptions-item label="缺陷位置">{{ modalRow.position }}</el-descriptions-item>
-          <el-descriptions-item label="严重程度">
-            <el-tag :type="getSeverityType(modalRow.severity)">
-              {{ getSeverityText(modalRow.severity) }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="缺陷长度">{{ modalRow.length }}</el-descriptions-item>
-          <el-descriptions-item label="缺陷面积">{{ modalRow.area }}</el-descriptions-item>
-          <el-descriptions-item label="缺陷数量">{{ modalRow.count }}</el-descriptions-item>
-          <el-descriptions-item label="是否属实">
-            <el-tag :type="modalRow.isReal ? 'success' : 'danger'">
-              {{ modalRow.isReal ? '是' : '否' }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="建议整改方式" :span="2">{{ modalRow.rectifyMethod }}</el-descriptions-item>
-          <el-descriptions-item label="缺陷上报时间" :span="2">{{ modalRow.foundTime }}</el-descriptions-item>
-        </el-descriptions>
       </div>
     </el-dialog>
 
@@ -310,7 +309,7 @@
     <el-dialog v-model="editVisible" :title="editMode === 'add' ? '新增缺陷' : '编辑缺陷'" width="600px" @close="resetEditForm">
       <el-form :model="editForm" :rules="editRules" ref="editFormRef" label-width="120px">
         <el-form-item label="缺陷编号" prop="defectNo">
-          <el-input v-model="editForm.defectNo" placeholder="请输入缺陷编号" />
+          <el-input v-model="editForm.defectNo" placeholder="请输入缺陷编号" @input="onDefectNoInput" />
         </el-form-item>
         <el-form-item label="任务ID" prop="taskId">
           <el-select v-model="editForm.taskId" placeholder="请选择任务">
@@ -346,7 +345,12 @@
           </el-select>
         </el-form-item>
         <el-form-item label="发现方式" prop="foundMethod" required>
-          <el-input v-model="editForm.foundMethod" placeholder="请输入发现方式" />
+          <el-select v-model="editForm.foundMethod" placeholder="请选择发现方式">
+            <el-option label="人工巡检" value="人工巡检" />
+            <el-option label="设备检测" value="设备检测" />
+            <el-option label="智能预警" value="智能预警" />
+            <el-option label="其他" value="其他" />
+          </el-select>
         </el-form-item>
         <el-form-item label="缺陷位置" prop="position">
           <el-input v-model="editForm.position" placeholder="请输入缺陷位置" />
@@ -389,7 +393,7 @@
         <el-form-item label="缺陷图片" prop="imageUrl">
           <el-upload
             class="avatar-uploader"
-            action="/api/defects/upload"
+            action="/api/defect-info/upload"
             :show-file-list="false"
             :on-success="handleUploadSuccess"
             :before-upload="beforeUpload"
@@ -424,7 +428,11 @@
         </el-descriptions-item>
         <el-descriptions-item label="缺陷上报时间">{{ selectedDefect.foundTime }}</el-descriptions-item>
         <el-descriptions-item label="上报人">{{ selectedDefect.foundBy }}</el-descriptions-item>
-        <el-descriptions-item label="任务ID">{{ selectedDefect.taskId }}</el-descriptions-item>
+        <el-descriptions-item label="任务ID">
+          <el-link type="primary" :underline="false" @click="goToTaskDetail(selectedDefect.taskId)">
+            {{ selectedDefect.taskId }}
+          </el-link>
+        </el-descriptions-item>
         <el-descriptions-item label="发现方式">{{ selectedDefect.foundMethod }}</el-descriptions-item>
         <el-descriptions-item label="缺陷位置">{{ selectedDefect.position }}</el-descriptions-item>
         <el-descriptions-item label="状态">{{ getRectifyStatusText(selectedDefect.status) }}</el-descriptions-item>
@@ -435,7 +443,13 @@
         <el-descriptions-item label="处理结束时间">{{ selectedDefect.handleEndTime }}</el-descriptions-item>
         <el-descriptions-item label="处理结果">{{ selectedDefect.handleResult }}</el-descriptions-item>
         <el-descriptions-item label="缺陷图片">
-          <el-image v-if="selectedDefect.imageUrl" :src="selectedDefect.imageUrl" :preview-src-list="[selectedDefect.imageUrl]" style="width: 100px; height: 100px;" fit="cover"></el-image>
+          <el-image
+            v-if="selectedDefect.imageUrl"
+            :src="selectedDefect.imageUrl"
+            style="width: 100px; height: 100px; cursor: pointer; object-fit: cover; border-radius: 4px;"
+            fit="cover"
+            @click="showImagePreview(selectedDefect)"
+          />
           <span v-else>无</span>
         </el-descriptions-item>
         <el-descriptions-item label="备注">{{ selectedDefect.remark }}</el-descriptions-item>
@@ -453,7 +467,11 @@ import { getDefectPage, createDefect, updateDefect, deleteDefect, confirmDefect,
 import { getUserList } from '../api/user'
 import { getTaskList } from '../api/task'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, ArrowDown, ArrowUp, Download, Plus } from '@element-plus/icons-vue'
+import { Search, Refresh, ArrowDown, ArrowUp, Download, Plus, Minus } from '@element-plus/icons-vue'
+import { useRouter, useRoute } from 'vue-router'
+
+const router = useRouter()
+const route = useRoute()
 
 const modalVisible = ref(false)
 const modalRow = ref({})
@@ -465,6 +483,10 @@ const selectedDefects = ref([])
 const quickFilter = ref('all')
 const userOptions = ref([])
 const taskOptions = ref([])
+const imagePreviewVisible = ref(false)
+const imagePreviewUrl = ref('')
+const imageRotate = ref(0)
+const imageScale = ref(1)
 
 // 搜索表单
 const searchForm = reactive({
@@ -699,7 +721,17 @@ let editForm = reactive({
   severity: 1,
   status: 0,
   rectifyMethod: '',
-  imageUrl: ''
+  imageUrl: '',
+  foundBy: '',
+  foundMethod: '',
+  confirmBy: '',
+  foundTime: '',
+  confirmTime: '',
+  handleBy: '',
+  handleStartTime: '',
+  handleEndTime: '',
+  handleResult: '',
+  remark: ''
 })
 
 const editRules = {
@@ -713,6 +745,7 @@ const editRules = {
 
 function resetEditForm() {
   editForm.defectId = null
+  editForm.defectNo = '' // 修复：新增时编号清空，前缀不会残留
   editForm.taskId = null
   editForm.defectType = ''
   editForm.position = ''
@@ -721,6 +754,16 @@ function resetEditForm() {
   editForm.status = 0
   editForm.rectifyMethod = ''
   editForm.imageUrl = ''
+  editForm.foundBy = ''
+  editForm.foundMethod = ''
+  editForm.confirmBy = ''
+  editForm.foundTime = ''
+  editForm.confirmTime = ''
+  editForm.handleBy = ''
+  editForm.handleStartTime = ''
+  editForm.handleEndTime = ''
+  editForm.handleResult = ''
+  editForm.remark = ''
   editFormRef.value?.clearValidate()
 }
 
@@ -916,8 +959,137 @@ function beforeUpload(rawFile) {
   return true
 }
 
+function showImagePreview(row) {
+  imagePreviewUrl.value = row.imageUrl
+  imagePreviewVisible.value = true
+  imageRotate.value = 0
+  imageScale.value = 1
+}
+
+function closeImagePreview() {
+  imagePreviewVisible.value = false
+}
+
+function rotateImage() {
+  imageRotate.value = (imageRotate.value + 90) % 360
+}
+
+function zoomInImage() {
+  imageScale.value = Math.min(imageScale.value + 0.2, 3)
+}
+
+function zoomOutImage() {
+  imageScale.value = Math.max(imageScale.value - 0.2, 0.2)
+}
+
+function downloadImage() {
+  // 支持跨域图片直接下载
+  fetch(imagePreviewUrl.value, {mode: 'cors'})
+    .then(res => res.blob())
+    .then(blob => {
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'defect-image.jpg'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    })
+}
+
+const dragState = reactive({
+  dragging: false,
+  startX: 0,
+  startY: 0,
+  lastX: 0,
+  lastY: 0,
+  offsetX: 0,
+  offsetY: 0
+})
+
+function startDrag(e) {
+  if (imageScale.value <= 1) return
+  dragState.dragging = true
+  dragState.startX = e.clientX
+  dragState.startY = e.clientY
+}
+
+function onDrag(e) {
+  if (!dragState.dragging) return
+  const dx = e.clientX - dragState.startX
+  const dy = e.clientY - dragState.startY
+  dragState.offsetX = dragState.lastX + dx
+  dragState.offsetY = dragState.lastY + dy
+}
+
+function endDrag() {
+  if (!dragState.dragging) return
+  dragState.dragging = false
+  dragState.lastX = dragState.offsetX
+  dragState.lastY = dragState.offsetY
+}
+
+function resetDrag() {
+  dragState.offsetX = 0
+  dragState.offsetY = 0
+  dragState.lastX = 0
+  dragState.lastY = 0
+}
+
+function getImageStyle() {
+  const containerW = 600
+  const containerH = 500
+  const deg = imageRotate.value % 180 === 0
+  const maxW = deg ? containerW : containerH
+  const maxH = deg ? containerH : containerW
+  const scale = imageScale.value
+  // 拖拽偏移
+  let translate = ''
+  if (scale > 1) {
+    translate = `translate(${dragState.offsetX}px, ${dragState.offsetY}px)`
+  }
+  return {
+    maxWidth: (maxW * scale) + 'px',
+    maxHeight: (maxH * scale) + 'px',
+    width: 'auto',
+    height: 'auto',
+    objectFit: 'contain',
+    display: 'block',
+    margin: 'auto',
+    cursor: scale > 1 ? (dragState.dragging ? 'grabbing' : 'grab') : 'default',
+    transform: `${translate} rotate(${imageRotate.value}deg)` ,
+    borderRadius: '8px',
+    boxShadow: '0 2px 12px rgba(0,0,0,0.15)'
+  }
+}
+
+function goToTaskDetail(taskId) {
+  if (!taskId) {
+    ElMessage.warning('该缺陷未关联任务，无法跳转！')
+    return
+  }
+  router.push({ path: '/task', query: { taskId } })
+}
+
+function onDefectNoInput(val) {
+  // 只在新增缺陷时自动加前缀，且避免重复加
+  if (editMode.value === 'add') {
+    if (!val.startsWith('DEF-')) {
+      editForm.defectNo = val.replace(/^DEF-/, '') ? 'DEF-' + val.replace(/^DEF-/, '') : ''
+    }
+  }
+}
+
 onMounted(() => {
-  loadDefectList()
+  // 如果路由带有 taskId 参数，则自动填充并搜索
+  if (route.query.taskId) {
+    searchForm.taskId = route.query.taskId
+    pagination.page = 1
+    loadDefectList()
+  } else {
+    loadDefectList()
+  }
   // 拉取用户列表，带上大页码参数，避免分页导致无数据
   getUserList({ page: 1, size: 1000 }).then(res => {
     if (res.code === 200) {
@@ -1016,6 +1188,55 @@ onMounted(() => {
   width: 178px;
   height: 178px;
   display: block;
+}
+
+/* 移动端适配 */
+@media screen and (max-width: 768px) {
+  .defect-bg {
+    padding: 5px;
+  }
+  .page-title {
+    font-size: 18px;
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+  .wireframe {
+    padding: 5px;
+    min-width: 0;
+  }
+  .search-form,
+  .advanced-search {
+    padding: 5px;
+    font-size: 14px;
+  }
+  .toolbar {
+    flex-direction: column;
+    gap: 8px;
+    padding: 5px;
+  }
+  .pagination-container {
+    text-align: center;
+    margin-top: 10px;
+  }
+  .el-table {
+    font-size: 12px;
+  }
+  .el-form-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .el-form-item__label {
+    min-width: 80px;
+    font-size: 13px;
+  }
+  .el-input, .el-select, .el-date-picker {
+    width: 100% !important;
+    min-width: 0;
+  }
+  .avatar-uploader .avatar {
+    width: 100px;
+    height: 100px;
+  }
 }
 </style>
 

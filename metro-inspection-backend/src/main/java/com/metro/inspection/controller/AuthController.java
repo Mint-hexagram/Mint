@@ -7,8 +7,11 @@ import com.metro.inspection.dto.RegisterRequest;
 import com.metro.inspection.dto.ForgotPasswordRequest;
 import com.metro.inspection.dto.ResetPasswordRequest;
 import com.metro.inspection.entity.SysUser;
+import com.metro.inspection.entity.SysOperLog;
 import com.metro.inspection.service.AuthService;
 import com.metro.inspection.service.SysUserService;
+import com.metro.inspection.service.SysOperLogService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -27,10 +30,26 @@ public class AuthController {
     @Autowired
     private SysUserService sysUserService;
 
+    @Autowired
+    private SysOperLogService sysOperLogService;
+
     @PostMapping("/login")
-    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
+    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest loginRequest, HttpServletRequest request) {
         try {
             LoginResponse response = authService.login(loginRequest);
+            // 登录成功后写入操作日志
+            if (response != null && response.getUserId() != null) {
+                SysOperLog log = new SysOperLog();
+                log.setUserId(response.getUserId().intValue());
+                log.setModule("登录");
+                log.setOperType("登录");
+                log.setOperDesc("用户登录系统");
+                log.setRequestParam("{\"username\":\"" + loginRequest.getUsername() + "\"}");
+                log.setOperTime(java.time.LocalDateTime.now());
+                log.setIp(request.getRemoteAddr());
+                log.setDevice(request.getHeader("User-Agent"));
+                sysOperLogService.save(log);
+            }
             return ApiResponse.success(response);
         } catch (Exception e) {
             return ApiResponse.error(e.getMessage());

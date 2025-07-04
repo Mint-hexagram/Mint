@@ -2,6 +2,7 @@ package com.metro.inspection.controller;
 
 import com.metro.inspection.entity.SysOperLog;
 import com.metro.inspection.service.SysOperLogService;
+import com.metro.inspection.common.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -13,8 +14,8 @@ public class SysOperLogController {
     private SysOperLogService sysOperLogService;
 
     @GetMapping
-    public List<SysOperLog> list() {
-        return sysOperLogService.list();
+    public ApiResponse<List<SysOperLog>> list() {
+        return ApiResponse.success(sysOperLogService.list());
     }
 
     @GetMapping("/{id}")

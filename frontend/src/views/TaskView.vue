@@ -194,7 +194,11 @@
           <el-table-column type="selection" width="55" />
           <el-table-column type="index" label="序号" width="60" />
           <el-table-column prop="taskNo" label="任务编号" width="120" />
-          <el-table-column prop="taskName" label="任务名称" min-width="150" />
+          <el-table-column prop="taskName" label="任务名称" min-width="150">
+            <template #default="{ row }">
+              <el-link type="primary" :underline="false" @click.stop="handleView(row)">{{ row.taskName }}</el-link>
+            </template>
+          </el-table-column>
           <el-table-column prop="taskType" label="任务类型" width="120" />
           <el-table-column prop="priority" label="优先级" width="100">
             <template #default="{ row }">
@@ -213,7 +217,13 @@
             </template>
           </el-table-column>
           <el-table-column prop="result" label="执行结果" width="120" />
-          <el-table-column prop="problemCount" label="发现问题数" width="100" />
+          <el-table-column prop="problemCount" label="发现问题数" width="100">
+            <template #default="{ row }">
+              <el-link type="primary" :underline="false" @click.stop="handleProblemCountClick(row)">
+                {{ row.problemCount }}
+              </el-link>
+            </template>
+          </el-table-column>
           <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
               <el-tag :type="getStatusType(row.status)">
@@ -348,7 +358,7 @@
         label-width="120px"
       >
         <el-form-item label="任务编号" prop="taskNo">
-          <el-input v-model="taskForm.taskNo" placeholder="请输入任务编号" />
+          <el-input v-model="taskForm.taskNo" placeholder="请输入任务编号" @input="onTaskNoInput" />
         </el-form-item>
         <el-form-item label="任务名称" prop="taskName">
           <el-input v-model="taskForm.taskName" placeholder="请输入任务名称" />
@@ -393,9 +403,6 @@
         <el-form-item label="执行结果" prop="result">
           <el-input v-model="taskForm.result" placeholder="请输入执行结果" />
         </el-form-item>
-        <el-form-item label="发现问题数" prop="problemCount">
-          <el-input-number v-model="taskForm.problemCount" :min="0" :step="1" placeholder="请输入发现问题数" style="width: 150px" />
-        </el-form-item>
         <el-form-item label="计划时间" prop="planTime">
           <el-date-picker
             v-model="taskForm.planTime"
@@ -434,15 +441,17 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import { getTaskPage, deleteTask, addTask, updateTask } from '../api/task'
 import { getUserList } from '../api/user'
+import { getDefectList } from '../api/defect'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, ArrowDown, ArrowUp, Download, Plus, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import dayjs from 'dayjs'
 
 const router = useRouter()
+const route = useRoute()
 
 // 响应式数据
 const viewType = ref('list')
@@ -636,13 +645,33 @@ function loadTaskList() {
     params.endDate = advancedSearchForm.dateRange[1]
   }
 
-  getTaskPage(params).then(res => {
+  getTaskPage(params).then(async res => {
     if (res.code === 200 && res.data && Array.isArray(res.data.records)) {
-      taskList.value = res.data.records.map(task => ({
+      let tasks = res.data.records.map(task => ({
         ...task,
-        executorName: task.executor ? task.executor.realName : 'N/A' 
+        executorName: task.executor ? task.executor.realName : 'N/A',
+        problemCount: 0 // 默认0，后续统计
       }))
       pagination.total = res.data.total || res.data.totalElements || 0
+      // 只统计每个任务下的缺陷数
+      if (tasks.length > 0) {
+        const promises = tasks.map(task =>
+          getDefectList({ taskId: task.taskId }).then(res => {
+            if (res.code === 200 && Array.isArray(res.data)) {
+              // 只统计该任务下的缺陷数
+              return res.data.filter(defect => defect.taskId === task.taskId).length
+            } else if (res.code === 200 && res.data.records) {
+              // 兼容后端返回records
+              return res.data.records.filter(defect => defect.taskId === task.taskId).length
+            } else {
+              return 0
+            }
+          }).catch(() => 0)
+        )
+        const counts = await Promise.all(promises)
+        tasks = tasks.map((task, idx) => ({ ...task, problemCount: counts[idx] }))
+      }
+      taskList.value = tasks
     } else {
       taskList.value = [];
       pagination.total = 0;
@@ -920,7 +949,33 @@ function hasPermission(roles) {
 
 onMounted(() => {
   fetchUserList()
-  loadTaskList() // 页面进入时自动加载任务列表
+  loadTaskList()
+  // 自动弹出详情
+  if (route.query.suffix || route.query.taskNo || route.query.taskId) {
+    let hasShown = false
+    const unwatch = watch(taskList, (list) => {
+      if (list && list.length > 0 && !hasShown) {
+        let target = null
+        if (route.query.suffix) {
+          target = list.find(t => String(t.taskNo).endsWith(route.query.suffix))
+        } else if (route.query.taskNo) {
+          target = list.find(t => String(t.taskNo) === String(route.query.taskNo))
+        } else if (route.query.taskId) {
+          target = list.find(t => String(t.taskId) === String(route.query.taskId))
+        }
+        if (target) {
+          handleView(target)
+          hasShown = true
+          router.replace({ path: '/task' })
+        } else {
+          ElMessage.warning('未找到对应的任务，可能已被删除！')
+          hasShown = true
+          router.replace({ path: '/task' })
+        }
+        unwatch()
+      }
+    }, { immediate: true })
+  }
 })
 
 const taskRules = {
@@ -957,9 +1012,6 @@ const taskRules = {
   result: [
     { required: false }
   ],
-  problemCount: [
-    { required: false }
-  ],
   planTime: [
     { required: true, type: 'array', min: 2, message: '请选择计划时间', trigger: 'change' }
   ],
@@ -969,6 +1021,25 @@ const taskRules = {
   description: [
     { required: false }
   ]
+}
+
+function onTaskNoInput(val) {
+  // 只在新增任务时自动加前缀，且避免重复加
+  if (dialogTitle.value === '新增任务') {
+    if (!val.startsWith('TASK-')) {
+      taskForm.value.taskNo = 'TASK-' + val.replace(/^TASK-/, '')
+    }
+  }
+}
+
+function handleProblemCountClick(row) {
+  // 跳转到缺陷管理页面，并带上任务ID参数（带前缀）
+  router.push({
+    path: '/defect',
+    query: {
+      taskId: row.taskId // 保证带前缀
+    }
+  })
 }
 </script>
 
