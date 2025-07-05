@@ -2,6 +2,20 @@
   <div class="log-bg">
     <div class="page-title">系统日志</div>
     <el-card>
+      <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+        <el-input v-model="searchUserId" placeholder="用户ID" style="width: 120px;" clearable />
+        <el-date-picker
+          v-model="searchTimeRange"
+          type="datetimerange"
+          range-separator="至"
+          start-placeholder="开始时间"
+          end-placeholder="结束时间"
+          value-format="YYYY-MM-DD HH:mm:ss"
+          style="width: 350px;"
+        />
+        <el-button type="primary" @click="handleSearch">搜索</el-button>
+        <el-button @click="handleReset">重置</el-button>
+      </div>
       <el-table :data="logList" border stripe v-loading="loading" style="width: 100%">
         <el-table-column prop="operId" label="日志ID" width="80" />
         <el-table-column prop="userId" label="用户ID" width="80" />
@@ -20,7 +34,14 @@
           <template #default="scope">{{ formatDateTime(scope.row.operTime) }}</template>
         </el-table-column>
         <el-table-column prop="ip" label="IP地址" width="120" />
-        <el-table-column prop="device" label="设备" min-width="120" />
+        <el-table-column prop="device" label="设备" min-width="120">
+          <template #default="scope">
+            <span>
+              {{ scope.row.device && scope.row.device.length > 30 ? scope.row.device.slice(0, 30) + '...' : scope.row.device }}
+              <el-link v-if="scope.row.device && scope.row.device.length > 30" type="primary" @click="showDevice(scope.row.device)">查看全部</el-link>
+            </span>
+          </template>
+        </el-table-column>
       </el-table>
       <div class="pagination-container">
         <el-pagination
@@ -34,6 +55,9 @@
     </el-card>
     <el-dialog v-model="paramDialogVisible" title="请求参数" width="600px" :show-close="true">
       <pre style="white-space: pre-wrap;word-break: break-all;">{{ paramDialogContent }}</pre>
+    </el-dialog>
+    <el-dialog v-model="deviceDialogVisible" title="设备信息" width="600px" :show-close="true">
+      <pre style="white-space: pre-wrap;word-break: break-all;">{{ deviceDialogContent }}</pre>
     </el-dialog>
   </div>
 </template>
@@ -50,6 +74,19 @@ const pagination = reactive({
   size: 10,
   total: 0
 })
+const searchTimeRange = ref([])
+const searchUserId = ref('')
+
+function handleSearch() {
+  pagination.currentPage = 1
+  loadLogList()
+}
+function handleReset() {
+  searchUserId.value = ''
+  searchTimeRange.value = []
+  pagination.currentPage = 1
+  loadLogList()
+}
 
 const paramDialogVisible = ref(false)
 const paramDialogContent = ref('')
@@ -59,6 +96,13 @@ function showParam(param) {
   paramDialogVisible.value = true
 }
 
+const deviceDialogVisible = ref(false)
+const deviceDialogContent = ref('')
+function showDevice(device) {
+  deviceDialogContent.value = device
+  deviceDialogVisible.value = true
+}
+
 function formatDateTime(val) {
   if (!val) return '-'
   return new Date(val).toLocaleString('zh-CN')
@@ -66,9 +110,19 @@ function formatDateTime(val) {
 
 function loadLogList() {
   loading.value = true
-  getLogPage().then(res => {
-    // 兼容直接数组返回
-    if (Array.isArray(res)) {
+  const params = { current: pagination.currentPage, size: pagination.size }
+  if (searchUserId.value) {
+    params.userId = searchUserId.value
+  }
+  if (searchTimeRange.value && searchTimeRange.value.length === 2) {
+    params.startTime = searchTimeRange.value[0]
+    params.endTime = searchTimeRange.value[1]
+  }
+  getLogPage(params).then(res => {
+    if (res.code === 200 && res.data && Array.isArray(res.data.records)) {
+      logList.value = res.data.records
+      pagination.total = res.data.total || 0
+    } else if (Array.isArray(res)) {
       logList.value = res
       pagination.total = res.length
     } else if (res.code === 200 && Array.isArray(res.data)) {

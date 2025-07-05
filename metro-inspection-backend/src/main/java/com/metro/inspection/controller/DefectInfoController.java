@@ -16,14 +16,25 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.UUID;
+import jakarta.servlet.http.HttpServletResponse;
+import com.metro.inspection.common.ExcelExportUtil;
 
 import java.util.List;
+import com.metro.inspection.entity.SysOperLog;
+import com.metro.inspection.service.SysOperLogService;
+import com.metro.inspection.common.JwtUtils;
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/defect-info")
 public class DefectInfoController {
     @Autowired
     private DefectInfoService defectInfoService;
+    @Autowired
+    private SysOperLogService sysOperLogService;
+    @Autowired
+    private JwtUtils jwtUtils;
 
     @GetMapping
     public ApiResponse<List<DefectInfo>> list() {
@@ -41,20 +52,71 @@ public class DefectInfoController {
     }
 
     @PostMapping
-    public ApiResponse<DefectInfo> create(@RequestBody DefectInfo defect) {
+    public ApiResponse<DefectInfo> create(@RequestBody DefectInfo defect, HttpServletRequest request) {
         defectInfoService.save(defect);
+        // 记录系统操作日志
+        String token = request.getHeader("Authorization");
+        Long userId = null;
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+            userId = jwtUtils.getUserIdFromToken(token);
+        }
+        SysOperLog log = new SysOperLog();
+        log.setUserId(userId != null ? userId.intValue() : null);
+        log.setModule("缺陷管理");
+        log.setOperType("新增");
+        log.setOperDesc("新增缺陷：" + defect.getDefectType() + " (ID:" + defect.getDefectId() + ")");
+        log.setRequestParam(defect.toString());
+        log.setOperTime(LocalDateTime.now());
+        log.setIp(request.getRemoteAddr());
+        log.setDevice(request.getHeader("User-Agent"));
+        sysOperLogService.save(log);
         return ApiResponse.success(defect);
     }
 
     @PutMapping
-    public ApiResponse<DefectInfo> update(@RequestBody DefectInfo defect) {
+    public ApiResponse<DefectInfo> update(@RequestBody DefectInfo defect, HttpServletRequest request) {
         defectInfoService.updateById(defect);
+        // 记录系统操作日志
+        String token = request.getHeader("Authorization");
+        Long userId = null;
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+            userId = jwtUtils.getUserIdFromToken(token);
+        }
+        SysOperLog log = new SysOperLog();
+        log.setUserId(userId != null ? userId.intValue() : null);
+        log.setModule("缺陷管理");
+        log.setOperType("编辑");
+        log.setOperDesc("编辑缺陷：" + defect.getDefectType() + " (ID:" + defect.getDefectId() + ")");
+        log.setRequestParam(defect.toString());
+        log.setOperTime(LocalDateTime.now());
+        log.setIp(request.getRemoteAddr());
+        log.setDevice(request.getHeader("User-Agent"));
+        sysOperLogService.save(log);
         return ApiResponse.success(defect);
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable Long id) {
+    public ApiResponse<Void> delete(@PathVariable Long id, HttpServletRequest request) {
         defectInfoService.removeById(id);
+        // 记录系统操作日志
+        String token = request.getHeader("Authorization");
+        Long userId = null;
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+            userId = jwtUtils.getUserIdFromToken(token);
+        }
+        SysOperLog log = new SysOperLog();
+        log.setUserId(userId != null ? userId.intValue() : null);
+        log.setModule("缺陷管理");
+        log.setOperType("删除");
+        log.setOperDesc("删除缺陷 (ID:" + id + ")");
+        log.setRequestParam("defectId=" + id);
+        log.setOperTime(LocalDateTime.now());
+        log.setIp(request.getRemoteAddr());
+        log.setDevice(request.getHeader("User-Agent"));
+        sysOperLogService.save(log);
         return ApiResponse.success(null);
     }
 
@@ -158,6 +220,19 @@ public class DefectInfoController {
             return ApiResponse.success(fileUrl);
         } catch (IOException e) {
             return ApiResponse.error("图片上传失败: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/export")
+    public void exportAllDefects(HttpServletResponse response) {
+        try {
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition", "attachment; filename=defects.xlsx");
+            List<DefectInfo> defectList = defectInfoService.list();
+            ExcelExportUtil.exportDefectInfoList(defectList, response.getOutputStream());
+            response.flushBuffer();
+        } catch (Exception e) {
+            throw new RuntimeException("导出缺陷信息失败: " + e.getMessage(), e);
         }
     }
 } 

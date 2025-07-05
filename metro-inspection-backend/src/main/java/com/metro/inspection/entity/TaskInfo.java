@@ -68,6 +68,9 @@ public class TaskInfo {
     @TableField("problem_count")
     private Integer problemCount;
 
+    @TableField("distance")
+    private Double distance;
+
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
@@ -118,6 +121,8 @@ public class TaskInfo {
     public void setResult(String result) { this.result = result; }
     public Integer getProblemCount() { return problemCount; }
     public void setProblemCount(Integer problemCount) { this.problemCount = problemCount; }
+    public Double getDistance() { return distance; }
+    public void setDistance(Double distance) { this.distance = distance; }
     public LocalDateTime getCreateTime() { return createTime; }
     public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
 } 

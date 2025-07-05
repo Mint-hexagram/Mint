@@ -1,6 +1,9 @@
 <template>
   <div class="task-bg">
     <div class="page-title">任务管理</div>
+    <div style="margin-bottom: 16px; text-align: right;">
+      <!-- 删除右上角新增任务按钮对应的el-button代码 -->
+    </div>
     <div class="wireframe">
       <!-- 视图切换标签 -->
       <div class="tabs">
@@ -171,9 +174,12 @@
               <el-icon><Download /></el-icon>
               导出
             </el-button>
-            <el-button @click="handleRefresh">
+            <el-button @click="loadTaskList">
               <el-icon><Refresh /></el-icon>
               刷新
+            </el-button>
+            <el-button type="primary" @click="showStatsDialog = true">
+              任务统计分析
             </el-button>
           </div>
           <div class="toolbar-info">
@@ -246,6 +252,9 @@
               {{ formatDateTime(row.createTime) }}
             </template>
           </el-table-column>
+          <el-table-column prop="distance" label="距离(公里)" width="100" />
+          <el-table-column prop="executorName" label="执行人" width="120" />
+          <el-table-column prop="assistantName" label="协助人" width="120" />
           <el-table-column label="操作" width="200" align="center">
             <template #default="{ row }">
               <el-button type="text" @click="handleView(row)">查看</el-button>
@@ -335,12 +344,14 @@
         <el-descriptions-item label="计划开始时间">{{ formatDateTime(detailTask.planStartTime) }}</el-descriptions-item>
         <el-descriptions-item label="计划完成时间">{{ formatDateTime(detailTask.planFinishTime) }}</el-descriptions-item>
         <el-descriptions-item label="执行人">{{ detailTask.executorName || detailTask.executorId }}</el-descriptions-item>
+        <el-descriptions-item label="协助人">{{ detailTask.assistantName || detailTask.assistantId }}</el-descriptions-item>
         <el-descriptions-item label="任务描述">{{ detailTask.description }}</el-descriptions-item>
         <el-descriptions-item label="创建人ID">{{ detailTask.creatorId }}</el-descriptions-item>
         <el-descriptions-item label="执行人ID">{{ detailTask.executorId }}</el-descriptions-item>
         <el-descriptions-item label="最后执行时间">{{ formatDateTime(detailTask.actualStartTime) }}</el-descriptions-item>
         <el-descriptions-item label="完成时间">{{ formatDateTime(detailTask.actualEndTime) }}</el-descriptions-item>
         <el-descriptions-item label="上传时间">{{ formatDateTime(detailTask.createTime) }}</el-descriptions-item>
+        <el-descriptions-item label="距离(公里)">{{ detailTask.distance }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
 
@@ -414,14 +425,12 @@
           />
         </el-form-item>
         <el-form-item label="执行人" prop="executorId">
-          <el-select v-model="taskForm.executorId" placeholder="请选择执行人" filterable>
-            <el-option 
-              v-for="user in userList || []" 
-              :key="user.userId" 
-              :label="user.realName" 
-              :value="user.userId" 
-            />
-          </el-select>
+          <el-input v-model="executorNameDisplay" placeholder="请选择执行人" readonly @click="showExecutorDialog = true" style="width: 150px; cursor:pointer;" />
+          <UserSelectDialog v-model="showExecutorDialog" @select="onExecutorSelect" />
+        </el-form-item>
+        <el-form-item label="协助人" prop="assistantId">
+          <el-input v-model="assistantNameDisplay" placeholder="请选择协助人" readonly @click="showAssistantDialog = true" style="width: 150px; cursor:pointer;" />
+          <UserSelectDialog v-model="showAssistantDialog" @select="onAssistantSelect" />
         </el-form-item>
         <el-form-item label="任务描述" prop="description">
           <el-input 
@@ -431,10 +440,56 @@
             placeholder="请输入任务描述" 
           />
         </el-form-item>
+        <el-form-item label="距离(公里)" prop="distance">
+          <el-input-number v-model="taskForm.distance" :min="0" :step="0.01" placeholder="请输入距离" style="width: 150px" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="handleClose">取 消</el-button>
         <el-button type="primary" @click="handleSave" :loading="saving">保 存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 任务统计分析弹窗 -->
+    <el-dialog v-model="showStatsDialog" title="任务统计分析" width="600px">
+      <div style="padding: 10px 0;">
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-card shadow="hover">
+              <div style="font-size:18px;font-weight:bold;margin-bottom:8px;">任务总览</div>
+              <el-descriptions :column="1" border size="small">
+                <el-descriptions-item label="任务总数"><el-tag>{{ stats.total }}</el-tag></el-descriptions-item>
+                <el-descriptions-item label="平均距离(公里)"><el-tag type="success">{{ stats.avgDistance }}</el-tag></el-descriptions-item>
+                <el-descriptions-item label="总距离(公里)"><el-tag type="info">{{ stats.sumDistance }}</el-tag></el-descriptions-item>
+                <el-descriptions-item label="最远距离(公里)"><el-tag type="warning">{{ stats.maxDistance }}</el-tag></el-descriptions-item>
+                <el-descriptions-item label="最近距离(公里)"><el-tag type="warning">{{ stats.minDistance }}</el-tag></el-descriptions-item>
+                <el-descriptions-item label="平均完成度(%)"><el-tag type="primary">{{ stats.avgProgress }}</el-tag></el-descriptions-item>
+              </el-descriptions>
+            </el-card>
+          </el-col>
+          <el-col :span="12">
+            <el-card shadow="hover">
+              <div style="font-size:18px;font-weight:bold;margin-bottom:8px;">状态分布</div>
+              <el-descriptions :column="1" border size="small">
+                <el-descriptions-item label="未开始"><el-tag>{{ stats.status0 }}</el-tag></el-descriptions-item>
+                <el-descriptions-item label="进行中"><el-tag type="warning">{{ stats.status1 }}</el-tag></el-descriptions-item>
+                <el-descriptions-item label="已完成"><el-tag type="success">{{ stats.status2 }}</el-tag></el-descriptions-item>
+                <el-descriptions-item label="已暂停"><el-tag type="info">{{ stats.status3 }}</el-tag></el-descriptions-item>
+              </el-descriptions>
+            </el-card>
+            <el-card shadow="hover" style="margin-top:12px;">
+              <div style="font-size:18px;font-weight:bold;margin-bottom:8px;">优先级分布</div>
+              <el-descriptions :column="1" border size="small">
+                <el-descriptions-item label="高"><el-tag type="danger">{{ stats.priorityHigh }}</el-tag></el-descriptions-item>
+                <el-descriptions-item label="中"><el-tag type="warning">{{ stats.priorityMid }}</el-tag></el-descriptions-item>
+                <el-descriptions-item label="低"><el-tag type="info">{{ stats.priorityLow }}</el-tag></el-descriptions-item>
+              </el-descriptions>
+            </el-card>
+          </el-col>
+        </el-row>
+      </div>
+      <template #footer>
+        <el-button @click="showStatsDialog = false">关闭</el-button>
       </template>
     </el-dialog>
   </div>
@@ -449,6 +504,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, ArrowDown, ArrowUp, Download, Plus, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 import { useRouter, useRoute } from 'vue-router'
 import dayjs from 'dayjs'
+import UserSelectDialog from '../components/UserSelectDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -467,6 +523,46 @@ const dialogTitle = ref('')
 const taskFormRef = ref(null)
 const saving = ref(false)
 const userList = ref([])
+const showExecutorDialog = ref(false)
+const showAssistantDialog = ref(false)
+// executorNameDisplay/assistantNameDisplay 改为ref，便于直接赋值
+const executorNameDisplay = ref('')
+const assistantNameDisplay = ref('')
+const showStatsDialog = ref(false)
+// 统计数据结构和计算
+const stats = reactive({
+  total: 0,
+  status0: 0,
+  status1: 0,
+  status2: 0,
+  status3: 0,
+  avgDistance: 0,
+  sumDistance: 0,
+  maxDistance: 0,
+  minDistance: 0,
+  avgProgress: 0,
+  priorityHigh: 0,
+  priorityMid: 0,
+  priorityLow: 0
+})
+function calcStats() {
+  const list = taskList.value
+  stats.total = list.length
+  stats.status0 = list.filter(t => t.status === 0).length
+  stats.status1 = list.filter(t => t.status === 1).length
+  stats.status2 = list.filter(t => t.status === 2).length
+  stats.status3 = list.filter(t => t.status === 3).length
+  const dists = list.map(t => Number(t.distance) || 0)
+  stats.avgDistance = dists.length ? (dists.reduce((a, b) => a + b, 0) / dists.length).toFixed(2) : 0
+  stats.sumDistance = dists.length ? dists.reduce((a, b) => a + b, 0).toFixed(2) : 0
+  stats.maxDistance = dists.length ? Math.max(...dists).toFixed(2) : 0
+  stats.minDistance = dists.length ? Math.min(...dists).toFixed(2) : 0
+  const progresses = list.map(t => Number(t.progress) || 0)
+  stats.avgProgress = progresses.length ? (progresses.reduce((a, b) => a + b, 0) / progresses.length).toFixed(2) : 0
+  stats.priorityHigh = list.filter(t => t.priority === '高').length
+  stats.priorityMid = list.filter(t => t.priority === '中').length
+  stats.priorityLow = list.filter(t => t.priority === '低').length
+}
 
 // 修复：补充 taskForm 的响应式声明
 const taskForm = ref({
@@ -487,7 +583,9 @@ const taskForm = ref({
   planStartTime: '',
   planFinishTime: '',
   executorId: null,
+  assistantId: null,
   description: '',
+  distance: 0,
 })
 
 // 搜索表单
@@ -649,7 +747,8 @@ function loadTaskList() {
     if (res.code === 200 && res.data && Array.isArray(res.data.records)) {
       let tasks = res.data.records.map(task => ({
         ...task,
-        executorName: task.executor ? task.executor.realName : 'N/A',
+        executorName: task.executor ? task.executor.realName : (userList.value.find(u => u.userId === task.executorId)?.realName || task.executorId),
+        assistantName: task.assistant ? task.assistant.realName : (userList.value.find(u => u.userId === task.assistantId)?.realName || task.assistantId),
         problemCount: 0 // 默认0，后续统计
       }))
       pagination.total = res.data.total || res.data.totalElements || 0
@@ -750,6 +849,8 @@ function handleAdd() {
     try {
       taskFormRef.value?.resetFields()
       taskForm.value.taskId = null
+      executorNameDisplay.value = ''
+      assistantNameDisplay.value = ''
     } catch (e) {
       console.error('表单重置失败', e)
     }
@@ -764,6 +865,11 @@ function handleEdit(row) {
   nextTick(() => {
     Object.assign(taskForm.value, row)
     taskForm.value.planTime = [row.planStartTime, row.planFinishTime]
+    // 同步显示
+    const executor = userList.value.find(u => u.userId === row.executorId)
+    executorNameDisplay.value = executor ? executor.realName : ''
+    const assistant = userList.value.find(u => u.userId === row.assistantId)
+    assistantNameDisplay.value = assistant ? assistant.realName : ''
   })
 }
 
@@ -771,7 +877,8 @@ function handleEdit(row) {
 function handleView(row) {
   // 查找执行人真实姓名
   const executor = userList.value.find(u => u.userId === row.executorId)
-  detailTask.value = { ...row, executorName: executor ? executor.realName : row.executorId }
+  const assistant = userList.value.find(u => u.userId === row.assistantId)
+  detailTask.value = { ...row, executorName: executor ? executor.realName : row.executorId, assistantName: assistant ? assistant.realName : row.assistantId }
   detailVisible.value = true
 }
 
@@ -802,7 +909,28 @@ function handleDelete(row) {
 
 // 导出
 function handleExport() {
-  ElMessage.info('导出功能开发中...')
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  fetch('/api/tasks/export', {
+    method: 'GET',
+    headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+  })
+    .then(res => {
+      if (!res.ok) throw new Error('导出失败');
+      return res.blob();
+    })
+    .then(blob => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '任务信息.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    })
+    .catch(() => {
+      ElMessage.error('导出失败');
+    });
 }
 
 // 刷新
@@ -907,7 +1035,9 @@ function handleClose() {
     planStartTime: '',
     planFinishTime: '',
     executorId: null,
+    assistantId: null,
     description: '',
+    distance: 0,
   }
 }
 
@@ -1018,8 +1148,14 @@ const taskRules = {
   executorId: [
     { required: true, message: '请选择执行人', trigger: 'change' }
   ],
+  assistantId: [
+    { required: false }
+  ],
   description: [
     { required: false }
+  ],
+  distance: [
+    { required: false, type: 'number', min: 0, message: '请输入有效距离', trigger: 'blur' }
   ]
 }
 
@@ -1041,6 +1177,28 @@ function handleProblemCountClick(row) {
     }
   })
 }
+
+function onExecutorSelect(user) {
+  taskForm.value.executorId = user.userId
+  // 直接回填显示
+  executorNameDisplay.value = user.realName
+  // 若userList中没有该用户则补充
+  if (!userList.value.find(u => u.userId === user.userId)) {
+    userList.value.push(user)
+  }
+}
+function onAssistantSelect(user) {
+  taskForm.value.assistantId = user.userId
+  assistantNameDisplay.value = user.realName
+  if (user && !userList.value.find(u => u.userId === user.userId)) {
+    userList.value.push(user)
+  }
+}
+
+// 保证统计数据实时刷新
+watch(taskList, () => {
+  calcStats()
+}, { deep: true })
 </script>
 
 <style scoped>

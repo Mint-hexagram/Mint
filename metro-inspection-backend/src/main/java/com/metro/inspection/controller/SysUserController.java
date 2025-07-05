@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
+import jakarta.servlet.http.HttpServletResponse;
+import com.metro.inspection.common.ExcelExportUtil;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -175,5 +177,17 @@ public class SysUserController {
     public ApiResponse<List<Long>> getUserRoleIds(@PathVariable Long id) {
         List<Long> roleIds = sysUserRoleService.getUserRoleIds(id);
         return ApiResponse.success(roleIds);
+    }
+
+    @GetMapping("/export")
+    public void exportAllUsers(HttpServletResponse response) {
+        try {
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition", "attachment; filename=users.xlsx");
+            List<SysUser> userList = sysUserService.list();
+            ExcelExportUtil.exportSysUserList(userList, response.getOutputStream());
+        } catch (Exception e) {
+            throw new RuntimeException("导出用户信息失败: " + e.getMessage(), e);
+        }
     }
 } 

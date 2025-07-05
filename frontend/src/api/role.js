@@ -23,4 +23,14 @@ export function updateRoleStatus(roleId, status) {
 // 分配权限（菜单）
 export function assignMenus(roleId, menuIds) {
   return request({ url: `/api/sys-role/${roleId}/menus`, method: 'post', data: { menuIds } })
+}
+
+// 获取角色数据权限
+export function getRoleDataScope(roleId) {
+  return request({ url: `/api/sys-role/${roleId}/data-scope`, method: 'get' })
+}
+
+// 更新角色数据权限
+export function updateRoleDataScope(roleId, dataScope) {
+  return request({ url: `/api/sys-role/${roleId}/data-scope`, method: 'put', data: { dataScope } })
 } 

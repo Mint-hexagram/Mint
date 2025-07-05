@@ -26,4 +26,14 @@ public interface SysUserRoleService extends IService<SysUserRole> {
      * 为新注册用户分配默认角色
      */
     void assignDefaultRoleToUser(Long userId);
+
+    /**
+     * 获取角色下的用户ID列表
+     */
+    List<Long> getUserIdsByRoleId(Long roleId);
+
+    /**
+     * 为角色分配用户
+     */
+    void assignUsersToRole(Long roleId, List<Long> userIds);
 } 

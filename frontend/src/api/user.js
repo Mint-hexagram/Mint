@@ -31,4 +31,12 @@ export function assignRoles(userId, roleIds) {
 // 获取用户角色ID
 export function getUserRoleIds(userId) {
   return request({ url: `/api/user/${userId}/role-ids`, method: 'get' })
+}
+// 获取角色下的用户ID列表
+export function getRoleUserIds(roleId) {
+  return request({ url: `/api/sys-role/${roleId}/user-ids`, method: 'get' })
+}
+// 为角色分配用户
+export function assignUsersToRole(roleId, userIds) {
+  return request({ url: `/api/sys-role/${roleId}/users`, method: 'post', data: { userIds } })
 } 

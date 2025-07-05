@@ -675,7 +675,28 @@ function toggleAdvancedSearch() {
 
 // 导出
 function handleExport() {
-  ElMessage.info('导出功能开发中...')
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  fetch('/api/defect-info/export', {
+    method: 'GET',
+    headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+  })
+    .then(res => {
+      if (!res.ok) throw new Error('导出失败');
+      return res.blob();
+    })
+    .then(blob => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '缺陷信息.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    })
+    .catch(() => {
+      ElMessage.error('导出失败');
+    });
 }
 
 // 刷新

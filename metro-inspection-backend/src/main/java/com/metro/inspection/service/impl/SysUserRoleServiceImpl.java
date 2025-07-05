@@ -90,4 +90,27 @@ public class SysUserRoleServiceImpl extends ServiceImpl<SysUserRoleMapper, SysUs
             System.err.println("为用户分配默认角色失败: " + e.getMessage());
         }
     }
+
+    @Override
+    public List<Long> getUserIdsByRoleId(Long roleId) {
+        return this.lambdaQuery().eq(SysUserRole::getRoleId, roleId).list()
+            .stream().map(SysUserRole::getUserId).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void assignUsersToRole(Long roleId, List<Long> userIds) {
+        // 先删除该角色下所有用户
+        this.lambdaUpdate().eq(SysUserRole::getRoleId, roleId).remove();
+        // 再批量插入
+        if (userIds != null && !userIds.isEmpty()) {
+            List<SysUserRole> list = userIds.stream().map(uid -> {
+                SysUserRole ur = new SysUserRole();
+                ur.setUserId(uid);
+                ur.setRoleId(roleId);
+                return ur;
+            }).collect(Collectors.toList());
+            this.saveBatch(list);
+        }
+    }
 } 

@@ -5,8 +5,11 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.metro.inspection.common.ApiResponse;
 import com.metro.inspection.entity.SysRole;
 import com.metro.inspection.service.SysRoleService;
+import com.metro.inspection.service.SysUserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletResponse;
+import com.metro.inspection.common.ExcelExportUtil;
 
 import java.util.List;
 import java.util.Map;
@@ -16,6 +19,9 @@ import java.util.Map;
 public class SysRoleController {
     @Autowired
     private SysRoleService sysRoleService;
+
+    @Autowired
+    private SysUserRoleService sysUserRoleService;
 
     @GetMapping("/list")
     public ApiResponse<IPage<SysRole>> getList(
@@ -71,6 +77,55 @@ public class SysRoleController {
     public ApiResponse<Void> assignMenus(@PathVariable Long id, @RequestBody Map<String, List<Long>> body) {
         List<Long> menuIds = body.get("menuIds");
         // TODO: 实现菜单分配逻辑
+        return ApiResponse.success(null);
+    }
+
+    @GetMapping("/export")
+    public void exportAllRoles(HttpServletResponse response) {
+        try {
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition", "attachment; filename=roles.xlsx");
+            List<SysRole> roleList = sysRoleService.list();
+            ExcelExportUtil.exportSysRoleList(roleList, response.getOutputStream());
+            response.flushBuffer();
+        } catch (Exception e) {
+            throw new RuntimeException("导出角色信息失败: " + e.getMessage(), e);
+        }
+    }
+
+    @GetMapping("/{id}/user-ids")
+    public ApiResponse<List<Long>> getUserIdsByRole(@PathVariable Long id) {
+        List<Long> userIds = sysUserRoleService.getUserIdsByRoleId(id);
+        return ApiResponse.success(userIds);
+    }
+
+    @PostMapping("/{id}/users")
+    public ApiResponse<Void> assignUsersToRole(@PathVariable Long id, @RequestBody Map<String, List<Long>> body) {
+        List<Long> userIds = body.get("userIds");
+        sysUserRoleService.assignUsersToRole(id, userIds);
+        return ApiResponse.success(null);
+    }
+
+    @GetMapping("/{id}/data-scope")
+    public ApiResponse<String> getRoleDataScope(@PathVariable Long id) {
+        SysRole role = sysRoleService.getById(id);
+        if (role == null) {
+            return ApiResponse.error("角色不存在");
+        }
+        return ApiResponse.success(role.getDataScope());
+    }
+
+    @PutMapping("/{id}/data-scope")
+    public ApiResponse<Void> updateRoleDataScope(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        String dataScope = body.get("dataScope");
+        if (dataScope == null || dataScope.trim().isEmpty()) {
+            return ApiResponse.error("数据权限范围不能为空");
+        }
+        
+        SysRole role = new SysRole();
+        role.setRoleId(id);
+        role.setDataScope(dataScope);
+        sysRoleService.updateById(role);
         return ApiResponse.success(null);
     }
 } 
